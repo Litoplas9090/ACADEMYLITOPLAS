@@ -102,21 +102,30 @@ function toYouTubeEmbed(url) {
 async function initDB() {
   if (dbType === 'postgres') {
     try {
-      // Verificar si users tiene full_name
+      // Verificar si el esquema está completo
       const checkUsers = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'full_name'
       `);
-      // Verificar si questions tiene option_a (columna clave del esquema correcto)
       const checkQuestions = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'questions' AND column_name = 'option_a'
       `);
+      const checkNumOptions = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'questions' AND column_name = 'num_options'
+      `);
+      const checkModuleVideos = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_name = 'module_videos'
+      `);
 
-      if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0) {
+      if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0 || 
+          checkNumOptions.rows.length === 0 || checkModuleVideos.rows.length === 0) {
         console.log('⚠️ Esquema incompleto o desactualizado. Recreando TODAS las tablas...');
         await pool.query('DROP TABLE IF EXISTS user_progress CASCADE');
         await pool.query('DROP TABLE IF EXISTS questions CASCADE');
+        await pool.query('DROP TABLE IF EXISTS module_videos CASCADE');
         await pool.query('DROP TABLE IF EXISTS modules CASCADE');
         await pool.query('DROP TABLE IF EXISTS users CASCADE');
       }
@@ -143,11 +152,18 @@ async function initDB() {
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
           description TEXT,
-          video_url VARCHAR(500),
           document_url VARCHAR(500),
           image_url VARCHAR(500),
           order_num INTEGER DEFAULT 0,
           active BOOLEAN DEFAULT TRUE
+        )
+      `);
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS module_videos (
+          id SERIAL PRIMARY KEY,
+          module_id INTEGER REFERENCES modules(id) ON DELETE CASCADE,
+          video_url VARCHAR(500) NOT NULL,
+          order_num INTEGER DEFAULT 0
         )
       `);
       await pool.query(`
@@ -164,11 +180,16 @@ async function initDB() {
           id SERIAL PRIMARY KEY,
           module_id INTEGER REFERENCES modules(id) ON DELETE CASCADE,
           question_text TEXT NOT NULL,
+          video_url VARCHAR(500),
+          document_url VARCHAR(500),
           option_a TEXT NOT NULL,
           option_b TEXT NOT NULL,
           option_c TEXT NOT NULL,
           option_d TEXT NOT NULL,
-          correct_option VARCHAR(1) NOT NULL CHECK (correct_option IN ('A','B','C','D'))
+          num_options INTEGER DEFAULT 4,
+          allow_multiple BOOLEAN DEFAULT FALSE,
+          correct_options VARCHAR(20) DEFAULT 'A',
+          order_num INTEGER DEFAULT 0
         )
       `);
 
@@ -176,20 +197,25 @@ async function initDB() {
       const modCount = await pool.query('SELECT COUNT(*) FROM modules');
       if (parseInt(modCount.rows[0].count) === 0) {
         const modules = [
-          ['Módulo 1: Introducción a la Seguridad Industrial', 'Conceptos básicos de seguridad en planta.', 'https://www.youtube.com/embed/VIDEO1', '', '', 1, true],
-          ['Módulo 2: Identificación de Riesgos', 'Cómo identificar y reportar riesgos en el área de trabajo.', 'https://www.youtube.com/embed/VIDEO2', '', '', 2, true],
-          ['Módulo 3: Uso de EPP', 'Elementos de Protección Personal obligatorios.', 'https://www.youtube.com/embed/VIDEO3', '', '', 3, true],
-          ['Módulo 4: Procedimientos de Emergencia', 'Rutas de evacuación y puntos de encuentro.', 'https://www.youtube.com/embed/VIDEO4', '', '', 4, true],
-          ['Módulo 5: Manejo de Sustancias Peligrosas', 'Protocolos para el manejo seguro de químicos.', 'https://www.youtube.com/embed/VIDEO5', '', '', 5, true],
-          ['Módulo 6: Evaluación Final', 'Cuestionario de evaluación para certificación.', 'https://www.youtube.com/embed/VIDEO6', '', '', 6, true],
+          ['Módulo 1: Introducción a la Seguridad Industrial', 'Conceptos básicos de seguridad en planta.', '', '', 1, true],
+          ['Módulo 2: Identificación de Riesgos', 'Cómo identificar y reportar riesgos en el área de trabajo.', '', '', 2, true],
+          ['Módulo 3: Uso de EPP', 'Elementos de Protección Personal obligatorios.', '', '', 3, true],
+          ['Módulo 4: Procedimientos de Emergencia', 'Rutas de evacuación y puntos de encuentro.', '', '', 4, true],
+          ['Módulo 5: Manejo de Sustancias Peligrosas', 'Protocolos para el manejo seguro de químicos.', '', '', 5, true],
+          ['Módulo 6: Evaluación Final', 'Cuestionario de evaluación para certificación.', '', '', 6, true],
         ];
         for (const m of modules) {
-          await pool.query(
-            'INSERT INTO modules (title, description, video_url, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+          const res = await pool.query(
+            'INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
             m
           );
+          // Insertar video placeholder
+          await pool.query(
+            'INSERT INTO module_videos (module_id, video_url, order_num) VALUES ($1,$2,$3)',
+            [res.rows[0].id, 'https://www.youtube.com/embed/VIDEO' + m[4], 1]
+          );
         }
-        console.log('✅ Módulos iniciales insertados');
+        console.log('✅ Módulos y videos iniciales insertados');
       }
       console.log('✅ Base de datos PostgreSQL inicializada');
     } catch (err) {
@@ -217,11 +243,16 @@ async function initDB() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
-        video_url TEXT,
         document_url TEXT,
         image_url TEXT,
         order_num INTEGER DEFAULT 0,
         active INTEGER DEFAULT 1
+      )`);
+      db.run(`CREATE TABLE IF NOT EXISTS module_videos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        module_id INTEGER,
+        video_url TEXT NOT NULL,
+        order_num INTEGER DEFAULT 0
       )`);
       db.run(`CREATE TABLE IF NOT EXISTS user_progress (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -234,26 +265,35 @@ async function initDB() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         module_id INTEGER,
         question_text TEXT NOT NULL,
+        video_url TEXT,
+        document_url TEXT,
         option_a TEXT NOT NULL,
         option_b TEXT NOT NULL,
         option_c TEXT NOT NULL,
         option_d TEXT NOT NULL,
-        correct_option TEXT NOT NULL CHECK(correct_option IN ('A','B','C','D'))
+        num_options INTEGER DEFAULT 4,
+        allow_multiple INTEGER DEFAULT 0,
+        correct_options TEXT DEFAULT 'A',
+        order_num INTEGER DEFAULT 0
       )`);
       db.get('SELECT COUNT(*) as count FROM modules', (err, row) => {
         if (!err && row.count === 0) {
           const modules = [
-            ['Módulo 1: Introducción a la Seguridad Industrial', 'Conceptos básicos de seguridad en planta.', 'https://www.youtube.com/embed/VIDEO1', '', '', 1, 1],
-            ['Módulo 2: Identificación de Riesgos', 'Cómo identificar y reportar riesgos en el área de trabajo.', 'https://www.youtube.com/embed/VIDEO2', '', '', 2, 1],
-            ['Módulo 3: Uso de EPP', 'Elementos de Protección Personal obligatorios.', 'https://www.youtube.com/embed/VIDEO3', '', '', 3, 1],
-            ['Módulo 4: Procedimientos de Emergencia', 'Rutas de evacuación y puntos de encuentro.', 'https://www.youtube.com/embed/VIDEO4', '', '', 4, 1],
-            ['Módulo 5: Manejo de Sustancias Peligrosas', 'Protocolos para el manejo seguro de químicos.', 'https://www.youtube.com/embed/VIDEO5', '', '', 5, 1],
-            ['Módulo 6: Evaluación Final', 'Cuestionario de evaluación para certificación.', 'https://www.youtube.com/embed/VIDEO6', '', '', 6, 1],
+            ['Módulo 1: Introducción a la Seguridad Industrial', 'Conceptos básicos de seguridad en planta.', '', '', 1, 1],
+            ['Módulo 2: Identificación de Riesgos', 'Cómo identificar y reportar riesgos en el área de trabajo.', '', '', 2, 1],
+            ['Módulo 3: Uso de EPP', 'Elementos de Protección Personal obligatorios.', '', '', 3, 1],
+            ['Módulo 4: Procedimientos de Emergencia', 'Rutas de evacuación y puntos de encuentro.', '', '', 4, 1],
+            ['Módulo 5: Manejo de Sustancias Peligrosas', 'Protocolos para el manejo seguro de químicos.', '', '', 5, 1],
+            ['Módulo 6: Evaluación Final', 'Cuestionario de evaluación para certificación.', '', '', 6, 1],
           ];
-          const stmt = db.prepare('INSERT INTO modules (title, description, video_url, document_url, image_url, order_num, active) VALUES (?,?,?,?,?,?,?)');
-          for (const m of modules) stmt.run(m);
+          const stmt = db.prepare('INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES (?,?,?,?,?,?)');
+          for (const m of modules) {
+            stmt.run(m, function() {
+              db.run('INSERT INTO module_videos (module_id, video_url, order_num) VALUES (?,?,?)', [this.lastID, 'https://www.youtube.com/embed/VIDEO' + m[4], 1]);
+            });
+          }
           stmt.finalize();
-          console.log('✅ Módulos iniciales insertados (SQLite)');
+          console.log('✅ Módulos y videos iniciales insertados (SQLite)');
         }
       });
       console.log('✅ Base de datos SQLite inicializada');
@@ -285,6 +325,10 @@ app.post('/api/register', async (req, res) => {
     const { full_name, document, email, company, password } = req.body;
     if (!full_name || !document || !password) {
       return res.status(400).json({ error: 'Nombre, documento y contraseña son obligatorios' });
+    }
+    // Validación de documento: solo números, 6-12 dígitos
+    if (!/^\d{6,12}$/.test(document)) {
+      return res.status(400).json({ error: 'El documento debe ser numérico y tener entre 6 y 12 dígitos' });
     }
     const hash = await bcrypt.hash(password, 10);
 
@@ -363,17 +407,32 @@ app.post('/api/admin/login', async (req, res) => {
 
 app.get('/api/modules', async (req, res) => {
   try {
+    let modules;
     if (dbType === 'postgres') {
       const result = await pool.query('SELECT * FROM modules WHERE active = TRUE ORDER BY order_num');
-      result.rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
-      res.json(result.rows);
+      modules = result.rows;
     } else {
-      db.all('SELECT * FROM modules WHERE active = 1 ORDER BY order_num', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
-        res.json(rows);
+      modules = await new Promise((resolve, reject) => {
+        db.all('SELECT * FROM modules WHERE active = 1 ORDER BY order_num', [], (err, rows) => {
+          if (err) reject(err); else resolve(rows);
+        });
       });
     }
+
+    // Cargar videos para cada módulo
+    for (const mod of modules) {
+      if (dbType === 'postgres') {
+        const vRes = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [mod.id]);
+        mod.videos = vRes.rows.map(v => ({ ...v, video_url: toYouTubeEmbed(v.video_url) }));
+      } else {
+        mod.videos = await new Promise((resolve, reject) => {
+          db.all('SELECT * FROM module_videos WHERE module_id = ? ORDER BY order_num', [mod.id], (err, rows) => {
+            if (err) reject(err); else resolve(rows.map(v => ({ ...v, video_url: toYouTubeEmbed(v.video_url) })));
+          });
+        });
+      }
+    }
+    res.json(modules);
   } catch (err) {
     console.error('Error en /api/modules:', err.message);
     res.status(500).json({ error: err.message });
@@ -383,28 +442,34 @@ app.get('/api/modules', async (req, res) => {
 app.get('/api/modules/:id', async (req, res) => {
   try {
     const moduleId = req.params.id;
-    let module, questions;
+    let module, questions, videos;
 
     if (dbType === 'postgres') {
       const modRes = await pool.query('SELECT * FROM modules WHERE id = $1', [moduleId]);
       module = modRes.rows[0];
-      if (module) module.video_url = toYouTubeEmbed(module.video_url);
-      const qRes = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
+      const qRes = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY order_num, id', [moduleId]);
       questions = qRes.rows;
+      const vRes = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [moduleId]);
+      videos = vRes.rows.map(v => ({ ...v, video_url: toYouTubeEmbed(v.video_url) }));
     } else {
       module = await new Promise((resolve, reject) => {
         db.get('SELECT * FROM modules WHERE id = ?', [moduleId], (err, row) => {
           if (err) reject(err); else resolve(row);
         });
       });
-      if (module) module.video_url = toYouTubeEmbed(module.video_url);
       questions = await new Promise((resolve, reject) => {
-        db.all('SELECT * FROM questions WHERE module_id = ? ORDER BY id', [moduleId], (err, rows) => {
+        db.all('SELECT * FROM questions WHERE module_id = ? ORDER BY order_num, id', [moduleId], (err, rows) => {
           if (err) reject(err); else resolve(rows);
+        });
+      });
+      videos = await new Promise((resolve, reject) => {
+        db.all('SELECT * FROM module_videos WHERE module_id = ? ORDER BY order_num', [moduleId], (err, rows) => {
+          if (err) reject(err); else resolve(rows.map(v => ({ ...v, video_url: toYouTubeEmbed(v.video_url) })));
         });
       });
     }
 
+    if (module) module.videos = videos || [];
     res.json({ module, questions: questions || [] });
   } catch (err) {
     console.error('Error en /api/modules/:id:', err.message);
@@ -502,10 +567,10 @@ app.get('/api/modules/:id/questions', async (req, res) => {
   try {
     const moduleId = req.params.id;
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, question_text, option_a, option_b, option_c, option_d FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
+      const result = await pool.query('SELECT id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options FROM questions WHERE module_id = $1 ORDER BY order_num, id', [moduleId]);
       res.json(result.rows);
     } else {
-      db.all('SELECT id, question_text, option_a, option_b, option_c, option_d FROM questions WHERE module_id = ? ORDER BY id', [moduleId], (err, rows) => {
+      db.all('SELECT id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options FROM questions WHERE module_id = ? ORDER BY order_num, id', [moduleId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
@@ -519,15 +584,15 @@ app.get('/api/modules/:id/questions', async (req, res) => {
 app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
   try {
     const moduleId = req.params.id;
-    const { answers } = req.body;
+    const { answers } = req.body; // { questionId: ['A','B'] } o { questionId: 'A' }
 
     let questions;
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, correct_option FROM questions WHERE module_id = $1', [moduleId]);
+      const result = await pool.query('SELECT id, allow_multiple, correct_options, num_options FROM questions WHERE module_id = $1', [moduleId]);
       questions = result.rows;
     } else {
       questions = await new Promise((resolve, reject) => {
-        db.all('SELECT id, correct_option FROM questions WHERE module_id = ?', [moduleId], (err, rows) => {
+        db.all('SELECT id, allow_multiple, correct_options, num_options FROM questions WHERE module_id = ?', [moduleId], (err, rows) => {
           if (err) reject(err); else resolve(rows);
         });
       });
@@ -539,7 +604,22 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
 
     let correct = 0;
     questions.forEach(q => {
-      if (answers && answers[q.id] === q.correct_option) correct++;
+      const userAns = answers ? answers[q.id] : null;
+      if (!userAns) return;
+
+      const correctSet = new Set((q.correct_options || 'A').split(',').map(s => s.trim()));
+
+      if (q.allow_multiple) {
+        // Respuestas múltiples: el usuario envía un array
+        const userSet = new Set(Array.isArray(userAns) ? userAns : [userAns]);
+        // Es correcto si coincide exactamente
+        if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
+          correct++;
+        }
+      } else {
+        // Respuesta única
+        if (correctSet.has(userAns)) correct++;
+      }
     });
 
     const score = Math.round((correct / questions.length) * 100);
@@ -557,10 +637,10 @@ app.get('/api/admin/modules/:id/questions', authMiddleware, async (req, res) => 
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const moduleId = req.params.id;
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY id', [moduleId]);
+      const result = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY order_num, id', [moduleId]);
       res.json(result.rows);
     } else {
-      db.all('SELECT * FROM questions WHERE module_id = ? ORDER BY id', [moduleId], (err, rows) => {
+      db.all('SELECT * FROM questions WHERE module_id = ? ORDER BY order_num, id', [moduleId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
@@ -579,15 +659,14 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
 
     if (dbType === 'postgres') {
       const modCheck = await pool.query('SELECT id FROM modules WHERE id = $1', [moduleId]);
-      if (modCheck.rows.length === 0) {
-        return res.status(404).json({ error: 'Módulo no encontrado' });
-      }
+      if (modCheck.rows.length === 0) return res.status(404).json({ error: 'Módulo no encontrado' });
       await pool.query('DELETE FROM questions WHERE module_id = $1', [moduleId]);
-      for (const q of questions) {
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
         if (!q.question_text) continue;
         await pool.query(
-          'INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-          [moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A']
+          'INSERT INTO questions (module_id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options, order_num) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
+          [moduleId, q.question_text, q.video_url || '', q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple || false, q.correct_options || 'A', i + 1]
         );
       }
     } else {
@@ -598,10 +677,11 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
       });
       if (!modCheck) return res.status(404).json({ error: 'Módulo no encontrado' });
       db.run('DELETE FROM questions WHERE module_id = ?', [moduleId]);
-      const stmt = db.prepare('INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES (?,?,?,?,?,?,?)');
-      for (const q of questions) {
+      const stmt = db.prepare('INSERT INTO questions (module_id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options, order_num) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
         if (!q.question_text) continue;
-        stmt.run(moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A');
+        stmt.run(moduleId, q.question_text, q.video_url || '', q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple ? 1 : 0, q.correct_options || 'A', i + 1);
       }
       stmt.finalize();
     }
@@ -613,7 +693,30 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
 });
 
 // ============================================
-// ENDPOINTS DE ADMIN
+// ENDPOINTS DE VIDEOS DE MÓDULOS (ADMIN)
+// ============================================
+
+app.get('/api/admin/modules/:id/videos', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+    const moduleId = req.params.id;
+    if (dbType === 'postgres') {
+      const result = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [moduleId]);
+      res.json(result.rows);
+    } else {
+      db.all('SELECT * FROM module_videos WHERE module_id = ? ORDER BY order_num', [moduleId], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+      });
+    }
+  } catch (err) {
+    console.error('Error en /api/admin/modules/:id/videos:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ENDPOINTS DE ADMIN - USUARIOS
 // ============================================
 
 app.get('/api/admin/users', authMiddleware, async (req, res) => {
@@ -634,6 +737,24 @@ app.get('/api/admin/users', authMiddleware, async (req, res) => {
   }
 });
 
+app.delete('/api/admin/users/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+    const userId = req.params.id;
+    if (dbType === 'postgres') {
+      await pool.query('DELETE FROM user_progress WHERE user_id = $1', [userId]);
+      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    } else {
+      db.run('DELETE FROM user_progress WHERE user_id = ?', [userId]);
+      db.run('DELETE FROM users WHERE id = ?', [userId]);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error en DELETE /api/admin/users/:id:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/admin/users/search', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
@@ -649,6 +770,79 @@ app.get('/api/admin/users/search', authMiddleware, async (req, res) => {
     }
   } catch (err) {
     console.error('Error en /api/admin/users/search:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ============================================
+// ENDPOINTS DE ESTADÍSTICAS
+// ============================================
+
+app.get('/api/admin/stats', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+    const { year, month } = req.query;
+
+    let stats = {};
+
+    if (dbType === 'postgres') {
+      // Totales
+      const totalRes = await pool.query('SELECT COUNT(*) as total FROM users');
+      const certRes = await pool.query('SELECT COUNT(*) as total FROM users WHERE certificate_issued = TRUE');
+      const avgRes = await pool.query('SELECT COALESCE(AVG(progress), 0) as avg FROM users');
+      const expRes = await pool.query('SELECT COUNT(*) as total FROM users WHERE certificate_expiry IS NOT NULL AND certificate_expiry > NOW() AND certificate_expiry <= NOW() + INTERVAL \'30 days\'');
+
+      stats.total_users = parseInt(totalRes.rows[0].total);
+      stats.certified_users = parseInt(certRes.rows[0].total);
+      stats.avg_progress = Math.round(parseFloat(avgRes.rows[0].avg));
+      stats.expiring_soon = parseInt(expRes.rows[0].total);
+
+      // Por mes y año
+      let monthlyQuery = `
+        SELECT 
+          EXTRACT(YEAR FROM created_at) as year,
+          EXTRACT(MONTH FROM created_at) as month,
+          COUNT(*) as count
+        FROM users
+        WHERE 1=1
+      `;
+      const params = [];
+      if (year) { monthlyQuery += ' AND EXTRACT(YEAR FROM created_at) = $' + (params.length + 1); params.push(year); }
+      if (month) { monthlyQuery += ' AND EXTRACT(MONTH FROM created_at) = $' + (params.length + 1); params.push(month); }
+      monthlyQuery += ' GROUP BY EXTRACT(YEAR FROM created_at), EXTRACT(MONTH FROM created_at) ORDER BY year DESC, month DESC';
+
+      const monthlyRes = await pool.query(monthlyQuery, params);
+      stats.monthly = monthlyRes.rows;
+    } else {
+      const total = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as total FROM users', [], (err, row) => { if (err) reject(err); else resolve(row); });
+      });
+      const cert = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) as total FROM users WHERE certificate_issued = 1', [], (err, row) => { if (err) reject(err); else resolve(row); });
+      });
+      const avg = await new Promise((resolve, reject) => {
+        db.get('SELECT COALESCE(AVG(progress), 0) as avg FROM users', [], (err, row) => { if (err) reject(err); else resolve(row); });
+      });
+
+      stats.total_users = total.total;
+      stats.certified_users = cert.total;
+      stats.avg_progress = Math.round(avg.avg);
+      stats.expiring_soon = 0;
+
+      let q = 'SELECT strftime("%Y", created_at) as year, strftime("%m", created_at) as month, COUNT(*) as count FROM users WHERE 1=1';
+      if (year) q += ' AND strftime("%Y", created_at) = "' + year + '"';
+      if (month) q += ' AND strftime("%m", created_at) = "' + month.padStart(2, '0') + '"';
+      q += ' GROUP BY strftime("%Y", created_at), strftime("%m", created_at) ORDER BY year DESC, month DESC';
+
+      const monthly = await new Promise((resolve, reject) => {
+        db.all(q, [], (err, rows) => { if (err) reject(err); else resolve(rows); });
+      });
+      stats.monthly = monthly;
+    }
+
+    res.json(stats);
+  } catch (err) {
+    console.error('Error en /api/admin/stats:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -690,6 +884,10 @@ app.get('/api/public/certificate', async (req, res) => {
   }
 });
 
+// ============================================
+// ENDPOINTS DE MÓDULOS (ADMIN)
+// ============================================
+
 app.post('/api/admin/modules', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
@@ -697,40 +895,95 @@ app.post('/api/admin/modules', authMiddleware, async (req, res) => {
 
     if (dbType === 'postgres') {
       await pool.query('DELETE FROM modules');
+      await pool.query('DELETE FROM module_videos');
+      await pool.query('DELETE FROM questions');
       await pool.query('ALTER SEQUENCE IF EXISTS modules_id_seq RESTART WITH 1');
+      await pool.query('ALTER SEQUENCE IF EXISTS module_videos_id_seq RESTART WITH 1');
       await pool.query('ALTER SEQUENCE IF EXISTS questions_id_seq RESTART WITH 1');
 
       for (let i = 0; i < modules.length; i++) {
         const m = modules[i];
-        await pool.query(
-          'INSERT INTO modules (title, description, video_url, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-          [m.title, m.description, toYouTubeEmbed(m.video_url), m.document_url, m.image_url, i + 1, m.active !== false]
+        const modRes = await pool.query(
+          'INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+          [m.title, m.description, m.document_url || '', m.image_url || '', i + 1, m.active !== false]
         );
+        const modId = modRes.rows[0].id;
+
+        // Insertar videos del módulo
+        if (m.videos && m.videos.length > 0) {
+          for (let v = 0; v < m.videos.length; v++) {
+            await pool.query(
+              'INSERT INTO module_videos (module_id, video_url, order_num) VALUES ($1,$2,$3)',
+              [modId, toYouTubeEmbed(m.videos[v]), v + 1]
+            );
+          }
+        }
       }
 
       const fresh = await pool.query('SELECT * FROM modules WHERE active = TRUE ORDER BY order_num');
-      fresh.rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
+      for (const mod of fresh.rows) {
+        const vRes = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [mod.id]);
+        mod.videos = vRes.rows.map(v => ({ ...v, video_url: toYouTubeEmbed(v.video_url) }));
+      }
       res.json({ success: true, modules: fresh.rows });
     } else {
       db.run('DELETE FROM modules');
+      db.run('DELETE FROM module_videos');
+      db.run('DELETE FROM questions');
       db.run('DELETE FROM sqlite_sequence WHERE name = "modules"');
+      db.run('DELETE FROM sqlite_sequence WHERE name = "module_videos"');
       db.run('DELETE FROM sqlite_sequence WHERE name = "questions"');
 
-      const stmt = db.prepare('INSERT INTO modules (title, description, video_url, document_url, image_url, order_num, active) VALUES (?,?,?,?,?,?,?)');
       for (let i = 0; i < modules.length; i++) {
         const m = modules[i];
-        stmt.run(m.title, m.description, toYouTubeEmbed(m.video_url), m.document_url, m.image_url, i + 1, m.active !== false ? 1 : 0);
+        await new Promise((resolve, reject) => {
+          db.run('INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES (?,?,?,?,?,?)', 
+            [m.title, m.description, m.document_url || '', m.image_url || '', i + 1, m.active !== false ? 1 : 0],
+            function(err) {
+              if (err) reject(err);
+              else resolve(this.lastID);
+            }
+          );
+        }).then(modId => {
+          if (m.videos && m.videos.length > 0) {
+            const vStmt = db.prepare('INSERT INTO module_videos (module_id, video_url, order_num) VALUES (?,?,?)');
+            for (let v = 0; v < m.videos.length; v++) {
+              vStmt.run(modId, toYouTubeEmbed(m.videos[v]), v + 1);
+            }
+            vStmt.finalize();
+          }
+        });
       }
-      stmt.finalize();
 
       db.all('SELECT * FROM modules WHERE active = 1 ORDER BY order_num', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
         res.json({ success: true, modules: rows });
       });
     }
   } catch (err) {
     console.error('Error en /api/admin/modules:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/modules/:id', authMiddleware, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
+    const moduleId = req.params.id;
+    if (dbType === 'postgres') {
+      await pool.query('DELETE FROM questions WHERE module_id = $1', [moduleId]);
+      await pool.query('DELETE FROM module_videos WHERE module_id = $1', [moduleId]);
+      await pool.query('DELETE FROM user_progress WHERE module_id = $1', [moduleId]);
+      await pool.query('DELETE FROM modules WHERE id = $1', [moduleId]);
+    } else {
+      db.run('DELETE FROM questions WHERE module_id = ?', [moduleId]);
+      db.run('DELETE FROM module_videos WHERE module_id = ?', [moduleId]);
+      db.run('DELETE FROM user_progress WHERE module_id = ?', [moduleId]);
+      db.run('DELETE FROM modules WHERE id = ?', [moduleId]);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error en DELETE /api/admin/modules/:id:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -757,6 +1010,6 @@ app.post('/api/admin/reset-password', authMiddleware, async (req, res) => {
 // ============================================
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log('🚀 Litoplas Academy v5.3.2 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
+    console.log('🚀 Litoplas Academy v5.4 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
   });
 });

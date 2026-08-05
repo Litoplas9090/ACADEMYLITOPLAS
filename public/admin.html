@@ -37,6 +37,7 @@
         <button id="tab-search" class="admin-tab active">Buscar por Documento</button>
         <button id="tab-users" class="admin-tab">Usuarios</button>
         <button id="tab-expiring" class="admin-tab">Próximos a Vencer</button>
+        <button id="tab-stats" class="admin-tab">Estadísticas</button>
         <button id="tab-content" class="admin-tab">Contenido del Curso</button>
       </div>
 
@@ -62,10 +63,16 @@
         <div id="expiring-table-container"></div>
       </div>
 
+      <!-- ESTADÍSTICAS -->
+      <div id="panel-stats" class="admin-panel-content hidden">
+        <h3>Estadísticas de la Plataforma</h3>
+        <div id="stats-container"></div>
+      </div>
+
       <!-- CONTENIDO DEL CURSO -->
       <div id="panel-content" class="admin-panel-content hidden">
         <h3>Gestión de Módulos y Preguntas</h3>
-        <p class="admin-hint">Edita cada módulo y agrega las preguntas que el usuario debe responder para completarlo.</p>
+        <p class="admin-hint">Edita cada módulo, agrega videos, documentos y preguntas. Puedes eliminar módulos o agregar nuevos.</p>
         <div id="modules-admin-container"></div>
         <button id="btn-save-modules" class="btn-primary">Guardar Cambios de Módulos</button>
       </div>

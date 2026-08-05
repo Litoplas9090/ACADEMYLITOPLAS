@@ -1,6 +1,6 @@
 // ============================================
-// LITOPLAS ACADEMY - APP.JS v5.3.1
-// Curso secuencial con cuestionario
+// LITOPLAS ACADEMY - APP.JS v5.4
+// Múltiples videos, preguntas con multimedia, respuestas múltiples
 // ============================================
 
 const API_URL = window.location.origin;
@@ -49,7 +49,7 @@ const certExpiry = document.getElementById('cert-expiry');
 const certDate = document.getElementById('cert-date');
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[APP] Iniciando Litoplas Academy v5.3.1');
+  console.log('[APP] Iniciando Litoplas Academy v5.4');
 
   tabLogin.addEventListener('click', showLogin);
   tabRegister.addEventListener('click', showRegister);
@@ -149,6 +149,11 @@ async function doRegister() {
 
   if (!fullname || !documento || !password) {
     registerMsg.textContent = 'Nombre, documento y contraseña son obligatorios';
+    registerMsg.className = 'msg error';
+    return;
+  }
+  if (!/^\d{6,12}$/.test(documento)) {
+    registerMsg.textContent = 'El documento debe ser numérico y tener entre 6 y 12 dígitos';
     registerMsg.className = 'msg error';
     return;
   }
@@ -290,19 +295,28 @@ function renderActiveModule() {
   html += '</div>';
   html += '<p class="module-active-desc">' + escapeHtml(mod.description || '') + '</p>';
 
-  if (mod.video_url) {
-    html += '<div class="video-container">';
-    html += '<iframe src="' + escapeHtml(mod.video_url) + '" ';
-    html += 'frameborder="0" ';
-    html += 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ';
-    html += 'referrerpolicy="strict-origin-when-cross-origin" ';
-    html += 'allowfullscreen ';
-    html += 'loading="lazy" ';
-    html += 'title="Video del módulo"></iframe>';
+  // Múltiples videos
+  if (mod.videos && mod.videos.length > 0) {
+    mod.videos.forEach((vid, vidx) => {
+      if (vid.video_url) {
+        html += '<div class="video-container">';
+        html += '<iframe src="' + escapeHtml(vid.video_url) + '" ';
+        html += 'frameborder="0" ';
+        html += 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ';
+        html += 'referrerpolicy="strict-origin-when-cross-origin" ';
+        html += 'allowfullscreen ';
+        html += 'loading="lazy" ';
+        html += 'title="Video ' + (vidx + 1) + '"></iframe>';
+        html += '</div>';
+      }
+    });
+  }
+
+  // Documento del módulo
+  if (mod.document_url) {
+    html += '<div class="module-document">';
+    html += '<a href="' + escapeHtml(mod.document_url) + '" target="_blank" class="btn-doc">📄 Descargar documento del módulo</a>';
     html += '</div>';
-    html += '<p class="video-fallback" style="display:none;color:#666;text-align:center;margin-top:10px;">';
-    html += 'Si el video no carga, <a href="' + escapeHtml(mod.video_url.replace('youtube-nocookie.com/embed/', 'youtube.com/watch?v=')) + '" target="_blank">abrir en YouTube</a>';
-    html += '</p>';
   }
 
   if (completed) {
@@ -358,10 +372,43 @@ async function loadQuiz(moduleId) {
     questions.forEach((q, idx) => {
       html += '<div class="quiz-question" data-qid="' + q.id + '">';
       html += '<p class="q-text"><strong>' + (idx + 1) + '.</strong> ' + escapeHtml(q.question_text) + '</p>';
-      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="A"> ' + escapeHtml(q.option_a) + '</label>';
-      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="B"> ' + escapeHtml(q.option_b) + '</label>';
-      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="C"> ' + escapeHtml(q.option_c) + '</label>';
-      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="D"> ' + escapeHtml(q.option_d) + '</label>';
+
+      // Video de la pregunta
+      if (q.video_url) {
+        html += '<div class="question-video-container">';
+        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy"></iframe>';
+        html += '</div>';
+      }
+
+      // Documento de la pregunta
+      if (q.document_url) {
+        html += '<div class="question-doc">';
+        html += '<a href="' + escapeHtml(q.document_url) + '" target="_blank" class="btn-doc-small">📄 Ver documento</a>';
+        html += '</div>';
+      }
+
+      const numOpts = q.num_options || 4;
+      const isMultiple = q.allow_multiple;
+      const inputType = isMultiple ? 'checkbox' : 'radio';
+
+      const options = [
+        { key: 'A', label: q.option_a },
+        { key: 'B', label: q.option_b },
+        { key: 'C', label: q.option_c },
+        { key: 'D', label: q.option_d }
+      ];
+
+      options.slice(0, numOpts).forEach(opt => {
+        html += '<label class="q-option">';
+        html += '<input type="' + inputType + '" name="q_' + q.id + '" value="' + opt.key + '"> ';
+        html += '<strong>' + opt.key + ')</strong> ' + escapeHtml(opt.label);
+        html += '</label>';
+      });
+
+      if (isMultiple) {
+        html += '<p class="q-hint">✓ Puedes seleccionar varias respuestas</p>';
+      }
+
       html += '</div>';
     });
 
@@ -386,9 +433,13 @@ async function submitQuiz(moduleId, questions) {
   let allAnswered = true;
 
   questions.forEach(q => {
-    const selected = document.querySelector('input[name="q_' + q.id + '"]:checked');
-    if (selected) {
-      answers[q.id] = selected.value;
+    const inputs = document.querySelectorAll('input[name="q_' + q.id + '"]:checked');
+    if (inputs.length > 0) {
+      if (q.allow_multiple) {
+        answers[q.id] = Array.from(inputs).map(inp => inp.value);
+      } else {
+        answers[q.id] = inputs[0].value;
+      }
     } else {
       allAnswered = false;
     }

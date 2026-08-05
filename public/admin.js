@@ -1,6 +1,6 @@
 // ============================================
-// LITOPLAS ACADEMY - ADMIN.JS v5.3.1
-// Fix: guardar preguntas con IDs consistentes
+// LITOPLAS ACADEMY - ADMIN.JS v5.4
+// Estadísticas, eliminar usuarios, módulos dinámicos, preguntas avanzadas
 // ============================================
 
 const API_URL = window.location.origin;
@@ -17,11 +17,13 @@ const btnAdminLogout = document.getElementById('btn-admin-logout');
 const tabSearch = document.getElementById('tab-search');
 const tabUsers = document.getElementById('tab-users');
 const tabExpiring = document.getElementById('tab-expiring');
+const tabStats = document.getElementById('tab-stats');
 const tabContent = document.getElementById('tab-content');
 
 const panelSearch = document.getElementById('panel-search');
 const panelUsers = document.getElementById('panel-users');
 const panelExpiring = document.getElementById('panel-expiring');
+const panelStats = document.getElementById('panel-stats');
 const panelContent = document.getElementById('panel-content');
 
 const searchDocument = document.getElementById('search-document');
@@ -30,6 +32,7 @@ const searchResults = document.getElementById('search-results');
 
 const usersTableContainer = document.getElementById('users-table-container');
 const expiringTableContainer = document.getElementById('expiring-table-container');
+const statsContainer = document.getElementById('stats-container');
 const modulesAdminContainer = document.getElementById('modules-admin-container');
 const btnSaveModules = document.getElementById('btn-save-modules');
 
@@ -43,7 +46,7 @@ let adminModulesData = [];
 let adminQuestionsData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.3.1');
+  console.log('[ADMIN] Iniciando panel administrativo v5.4');
 
   btnAdminLogin.addEventListener('click', doAdminLogin);
   btnAdminLogout.addEventListener('click', doAdminLogout);
@@ -52,6 +55,7 @@ document.addEventListener('DOMContentLoaded', function() {
   tabSearch.addEventListener('click', function() { showTab('search'); });
   tabUsers.addEventListener('click', function() { showTab('users'); });
   tabExpiring.addEventListener('click', function() { showTab('expiring'); });
+  tabStats.addEventListener('click', function() { showTab('stats'); });
   tabContent.addEventListener('click', function() { showTab('content'); });
 
   btnSearch.addEventListener('click', searchUser);
@@ -121,12 +125,13 @@ function showAdminPanel() {
 }
 
 function showTab(tab) {
-  [tabSearch, tabUsers, tabExpiring, tabContent].forEach(t => t.classList.remove('active'));
-  [panelSearch, panelUsers, panelExpiring, panelContent].forEach(p => p.classList.add('hidden'));
+  [tabSearch, tabUsers, tabExpiring, tabStats, tabContent].forEach(t => t.classList.remove('active'));
+  [panelSearch, panelUsers, panelExpiring, panelStats, panelContent].forEach(p => p.classList.add('hidden'));
 
   if (tab === 'search') { tabSearch.classList.add('active'); panelSearch.classList.remove('hidden'); }
   if (tab === 'users') { tabUsers.classList.add('active'); panelUsers.classList.remove('hidden'); loadUsers(); }
   if (tab === 'expiring') { tabExpiring.classList.add('active'); panelExpiring.classList.remove('hidden'); loadExpiring(); }
+  if (tab === 'stats') { tabStats.classList.add('active'); panelStats.classList.remove('hidden'); loadStats(); }
   if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
 }
 
@@ -190,6 +195,96 @@ async function loadExpiring() {
   }
 }
 
+async function loadStats() {
+  statsContainer.innerHTML = '<p>Cargando estadísticas...</p>';
+  try {
+    const res = await fetch(API_URL + '/api/admin/stats', {
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    const stats = await res.json();
+
+    let html = '<div class="stats-grid">';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.total_users || 0) + '</div><div class="stat-label">Total Usuarios</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.certified_users || 0) + '</div><div class="stat-label">Certificados</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.avg_progress || 0) + '%</div><div class="stat-label">Progreso Promedio</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.expiring_soon || 0) + '</div><div class="stat-label">Próximos a Vencer</div></div>';
+    html += '</div>';
+
+    // Filtros
+    html += '<div class="stats-filters">';
+    html += '<h4>Filtrar por período</h4>';
+    html += '<div class="filter-row">';
+    html += '<select id="filter-year"><option value="">Todos los años</option>' + generateYearOptions() + '</select>';
+    html += '<select id="filter-month"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>';
+    html += '<button id="btn-filter-stats" class="btn-primary" style="width:auto;padding:10px 20px;">Filtrar</button>';
+    html += '</div></div>';
+
+    // Tabla mensual
+    if (stats.monthly && stats.monthly.length > 0) {
+      html += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
+      html += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
+      stats.monthly.forEach(m => {
+        const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        html += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
+    }
+
+    statsContainer.innerHTML = html;
+
+    document.getElementById('btn-filter-stats').addEventListener('click', async function() {
+      const year = document.getElementById('filter-year').value;
+      const month = document.getElementById('filter-month').value;
+      let url = API_URL + '/api/admin/stats';
+      const params = [];
+      if (year) params.push('year=' + year);
+      if (month) params.push('month=' + month);
+      if (params.length > 0) url += '?' + params.join('&');
+
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + adminToken } });
+      const filtered = await res.json();
+
+      let tableHtml = '';
+      if (filtered.monthly && filtered.monthly.length > 0) {
+        tableHtml += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
+        tableHtml += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
+        filtered.monthly.forEach(m => {
+          const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+          tableHtml += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
+        });
+        tableHtml += '</tbody></table>';
+      } else {
+        tableHtml += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
+      }
+
+      const oldTable = statsContainer.querySelector('table');
+      const oldMsg = statsContainer.querySelector('.msg');
+      if (oldTable) oldTable.remove();
+      if (oldMsg) oldMsg.remove();
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = tableHtml;
+      while (tempDiv.firstChild) {
+        statsContainer.appendChild(tempDiv.firstChild);
+      }
+    });
+
+  } catch (err) {
+    statsContainer.innerHTML = '<p class="msg error">Error cargando estadísticas</p>';
+  }
+}
+
+function generateYearOptions() {
+  const currentYear = new Date().getFullYear();
+  let html = '';
+  for (let y = currentYear; y >= currentYear - 5; y--) {
+    html += '<option value="' + y + '">' + y + '</option>';
+  }
+  return html;
+}
+
 function renderUserTable(users, container, showExpiryOnly) {
   if (!users || users.length === 0) {
     container.innerHTML = '<p class="msg">No hay usuarios registrados</p>';
@@ -215,7 +310,8 @@ function renderUserTable(users, container, showExpiryOnly) {
     if (u.certificate_issued) {
       html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Certificado</button> ';
     }
-    html += '<button class="btn-small btn-reset" data-user-id="' + u.id + '">🔑 Reset Pass</button>';
+    html += '<button class="btn-small btn-reset" data-user-id="' + u.id + '">🔑 Reset Pass</button> ';
+    html += '<button class="btn-small btn-delete-user" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '">🗑️ Eliminar</button>';
     html += '</td></tr>';
   });
   html += '</tbody></table>';
@@ -228,6 +324,9 @@ function renderUserTable(users, container, showExpiryOnly) {
   });
   container.querySelectorAll('.btn-reset').forEach(btn => {
     btn.addEventListener('click', function() { resetPassword(this.getAttribute('data-user-id')); });
+  });
+  container.querySelectorAll('.btn-delete-user').forEach(btn => {
+    btn.addEventListener('click', function() { deleteUser(this.getAttribute('data-user-id'), this.getAttribute('data-user-name')); });
   });
 }
 
@@ -330,6 +429,23 @@ async function resetPassword(userId) {
   } catch (err) { alert('Error de conexión'); }
 }
 
+async function deleteUser(userId, userName) {
+  if (!confirm('¿Estás seguro de eliminar al usuario "' + userName + '"? Esta acción no se puede deshacer.')) return;
+  try {
+    const res = await fetch(API_URL + '/api/admin/users/' + userId, {
+      method: 'DELETE',
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('Usuario eliminado correctamente');
+      loadUsers();
+    } else {
+      alert('Error: ' + (data.error || 'No se pudo eliminar'));
+    }
+  } catch (err) { alert('Error de conexión'); }
+}
+
 // ============================================
 // GESTIÓN DE MÓDULOS Y PREGUNTAS
 // ============================================
@@ -366,17 +482,37 @@ function renderModulesAdmin() {
     html += '<div class="module-admin-header">';
     html += '<span class="module-admin-number">' + (idx + 1) + '</span>';
     html += '<h4>' + escapeHtml(mod.title) + '</h4>';
+    html += '<button class="btn-delete-module" data-index="' + idx + '">🗑️ Eliminar Módulo</button>';
     html += '</div>';
 
     html += '<label>Título del Módulo</label>';
     html += '<input type="text" class="mod-title" value="' + escapeHtml(mod.title) + '">';
     html += '<label>Descripción</label>';
     html += '<textarea class="mod-desc" rows="2">' + escapeHtml(mod.description || '') + '</textarea>';
-    html += '<label>URL del Video (YouTube)</label>';
-    html += '<input type="text" class="mod-video" value="' + escapeHtml(mod.video_url || '') + '" placeholder="https://www.youtube.com/watch?v=...">';
+
+    // Videos del módulo
+    html += '<div class="module-videos-section">';
+    html += '<label>Videos de YouTube</label>';
+    html += '<div class="videos-list" data-module-index="' + idx + '">';
+    if (mod.videos && mod.videos.length > 0) {
+      mod.videos.forEach((vid, vidx) => {
+        html += '<div class="video-input-row">';
+        html += '<input type="text" class="mod-video-url" value="' + escapeHtml(vid.video_url || '') + '" placeholder="https://www.youtube.com/watch?v=...">';
+        html += '<button class="btn-remove-video" data-mod-idx="' + idx + '" data-vid-idx="' + vidx + '">🗑️</button>';
+        html += '</div>';
+      });
+    }
+    html += '</div>';
+    html += '<button class="btn-add-video" data-index="' + idx + '">+ Agregar Video</button>';
+    html += '</div>';
+
+    html += '<label>Documento del Módulo (URL)</label>';
+    html += '<input type="text" class="mod-document" value="' + escapeHtml(mod.document_url || '') + '" placeholder="https://.../documento.pdf">';
+
     html += '<label>Activo</label>';
     html += '<select class="mod-active"><option value="1" ' + (mod.active !== false ? 'selected' : '') + '>Sí</option><option value="0" ' + (mod.active === false ? 'selected' : '') + '>No</option></select>';
 
+    // Preguntas
     html += '<div class="questions-section">';
     html += '<h5>📝 Preguntas del Módulo</h5>';
     html += '<div class="questions-list" data-module-id="' + mod.id + '">';
@@ -394,45 +530,96 @@ function renderModulesAdmin() {
     html += '</div>';
   });
   html += '</div>';
+  html += '<button id="btn-add-module" class="btn-primary" style="margin-top:20px;">+ Agregar Nuevo Módulo</button>';
   modulesAdminContainer.innerHTML = html;
 
+  // Event listeners
+  document.querySelectorAll('.btn-add-video').forEach(btn => {
+    btn.addEventListener('click', function() {
+      addVideoInput(parseInt(this.getAttribute('data-index')));
+    });
+  });
+  document.querySelectorAll('.btn-remove-video').forEach(btn => {
+    btn.addEventListener('click', function() {
+      removeVideoInput(parseInt(this.getAttribute('data-mod-idx')), parseInt(this.getAttribute('data-vid-idx')));
+    });
+  });
   document.querySelectorAll('.btn-add-question').forEach(btn => {
     btn.addEventListener('click', function() {
       const modId = parseInt(this.getAttribute('data-module-id'));
       addQuestionEditor(modId);
     });
   });
-
-  document.querySelectorAll('.btn-remove-question').forEach(btn => {
+  document.querySelectorAll('.btn-delete-module').forEach(btn => {
     btn.addEventListener('click', function() {
-      const modId = parseInt(this.getAttribute('data-module-id'));
-      const qidx = parseInt(this.getAttribute('data-qidx'));
-      removeQuestionEditor(modId, qidx);
+      deleteModule(parseInt(this.getAttribute('data-index')));
     });
   });
+  document.getElementById('btn-add-module').addEventListener('click', addNewModule);
+}
+
+function addVideoInput(moduleIndex) {
+  const list = document.querySelector('.videos-list[data-module-index="' + moduleIndex + '"]');
+  if (!list) return;
+  const row = document.createElement('div');
+  row.className = 'video-input-row';
+  row.innerHTML = '<input type="text" class="mod-video-url" placeholder="https://www.youtube.com/watch?v=..."> <button class="btn-remove-video">🗑️</button>';
+  list.appendChild(row);
+  row.querySelector('.btn-remove-video').addEventListener('click', function() {
+    row.remove();
+  });
+}
+
+function removeVideoInput(moduleIndex, videoIndex) {
+  const list = document.querySelector('.videos-list[data-module-index="' + moduleIndex + '"]');
+  if (!list) return;
+  const rows = list.querySelectorAll('.video-input-row');
+  if (rows[videoIndex]) rows[videoIndex].remove();
 }
 
 function renderQuestionEditor(moduleId, qidx, q) {
   q = q || {};
+  const numOpts = q.num_options || 4;
+  const isMultiple = q.allow_multiple || false;
+
   let html = '<div class="question-editor" data-qidx="' + qidx + '">';
   html += '<div class="question-editor-header">';
   html += '<span>Pregunta ' + (qidx + 1) + '</span>';
   html += '<button class="btn-remove-question" data-module-id="' + moduleId + '" data-qidx="' + qidx + '">🗑️ Eliminar</button>';
   html += '</div>';
+
   html += '<input type="text" class="q-text-input" placeholder="Texto de la pregunta" value="' + escapeHtml(q.question_text || '') + '">';
+
+  // Video y documento de la pregunta
+  html += '<div class="question-media">';
+  html += '<label>Video de la pregunta (YouTube URL)</label>';
+  html += '<input type="text" class="q-video" placeholder="https://www.youtube.com/watch?v=..." value="' + escapeHtml(q.video_url || '') + '">';
+  html += '<label>Documento de la pregunta (URL)</label>';
+  html += '<input type="text" class="q-document" placeholder="https://.../doc.pdf" value="' + escapeHtml(q.document_url || '') + '">';
+  html += '</div>';
+
+  // Configuración de opciones
+  html += '<div class="question-config">';
+  html += '<label>Número de opciones</label>';
+  html += '<select class="q-num-options">';
+  html += '<option value="2" ' + (numOpts === 2 ? 'selected' : '') + '>2 opciones</option>';
+  html += '<option value="3" ' + (numOpts === 3 ? 'selected' : '') + '>3 opciones</option>';
+  html += '<option value="4" ' + (numOpts === 4 ? 'selected' : '') + '>4 opciones</option>';
+  html += '</select>';
+  html += '<label class="q-multiple-label"><input type="checkbox" class="q-allow-multiple" ' + (isMultiple ? 'checked' : '') + '> Permitir respuestas múltiples</label>';
+  html += '</div>';
+
   html += '<div class="options-row">';
   html += '<div class="option-field"><label>A)</label><input type="text" class="q-opt-a" value="' + escapeHtml(q.option_a || '') + '"></div>';
   html += '<div class="option-field"><label>B)</label><input type="text" class="q-opt-b" value="' + escapeHtml(q.option_b || '') + '"></div>';
   html += '<div class="option-field"><label>C)</label><input type="text" class="q-opt-c" value="' + escapeHtml(q.option_c || '') + '"></div>';
   html += '<div class="option-field"><label>D)</label><input type="text" class="q-opt-d" value="' + escapeHtml(q.option_d || '') + '"></div>';
   html += '</div>';
-  html += '<label>Respuesta Correcta</label>';
-  html += '<select class="q-correct">';
-  html += '<option value="A" ' + (q.correct_option === 'A' ? 'selected' : '') + '>A</option>';
-  html += '<option value="B" ' + (q.correct_option === 'B' ? 'selected' : '') + '>B</option>';
-  html += '<option value="C" ' + (q.correct_option === 'C' ? 'selected' : '') + '>C</option>';
-  html += '<option value="D" ' + (q.correct_option === 'D' ? 'selected' : '') + '>D</option>';
-  html += '</select>';
+
+  html += '<label>Respuesta(s) Correcta(s)</label>';
+  html += '<input type="text" class="q-correct" placeholder="A  o  A,B  o  B,C,D" value="' + escapeHtml(q.correct_options || 'A') + '">';
+  html += '<p class="q-hint">Separa las letras con coma si son múltiples (ej: A,B)</p>';
+
   html += '</div>';
   return html;
 }
@@ -480,6 +667,31 @@ function removeQuestionEditor(moduleId, qidx) {
   }
 }
 
+function deleteModule(index) {
+  if (!confirm('¿Eliminar este módulo? Se perderán sus preguntas y videos.')) return;
+  adminModulesData.splice(index, 1);
+  renderModulesAdmin();
+}
+
+function addNewModule() {
+  const newIndex = adminModulesData.length;
+  adminModulesData.push({
+    id: 'new_' + Date.now(),
+    title: 'Nuevo Módulo ' + (newIndex + 1),
+    description: '',
+    videos: [''],
+    document_url: '',
+    active: true
+  });
+  adminQuestionsData['new_' + Date.now()] = [];
+  renderModulesAdmin();
+  // Scroll al nuevo módulo
+  setTimeout(() => {
+    const items = document.querySelectorAll('.module-admin-item');
+    if (items[items.length - 1]) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
 async function saveModules() {
   btnSaveModules.textContent = 'Guardando...';
   btnSaveModules.disabled = true;
@@ -487,18 +699,21 @@ async function saveModules() {
   const items = modulesAdminContainer.querySelectorAll('.module-admin-item');
   const modules = [];
   items.forEach(item => {
+    const videos = [];
+    item.querySelectorAll('.mod-video-url').forEach(inp => {
+      if (inp.value.trim()) videos.push(inp.value.trim());
+    });
+
     modules.push({
       title: item.querySelector('.mod-title').value,
       description: item.querySelector('.mod-desc').value,
-      video_url: item.querySelector('.mod-video').value,
-      document_url: '',
-      image_url: '',
+      videos: videos,
+      document_url: item.querySelector('.mod-document').value,
       active: item.querySelector('.mod-active').value === '1'
     });
   });
 
   try {
-    // Guardar módulos - el backend reinicia IDs y devuelve los módulos con IDs correctos
     const modRes = await fetch(API_URL + '/api/admin/modules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
@@ -513,10 +728,8 @@ async function saveModules() {
       return;
     }
 
-    // Usar los módulos devueltos por el backend (con IDs correctos 1,2,3...)
     const freshModules = modData.modules || [];
 
-    // Guardar preguntas para cada módulo usando los IDs correctos
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const modId = freshModules[i].id;
@@ -527,11 +740,15 @@ async function saveModules() {
         if (!qt) return;
         questions.push({
           question_text: qt,
+          video_url: ed.querySelector('.q-video').value,
+          document_url: ed.querySelector('.q-document').value,
           option_a: ed.querySelector('.q-opt-a').value,
           option_b: ed.querySelector('.q-opt-b').value,
           option_c: ed.querySelector('.q-opt-c').value,
           option_d: ed.querySelector('.q-opt-d').value,
-          correct_option: ed.querySelector('.q-correct').value
+          num_options: parseInt(ed.querySelector('.q-num-options').value) || 4,
+          allow_multiple: ed.querySelector('.q-allow-multiple').checked,
+          correct_options: ed.querySelector('.q-correct').value || 'A'
         });
       });
 
