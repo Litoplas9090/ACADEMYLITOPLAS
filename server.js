@@ -39,18 +39,18 @@ if (dbType === 'sqlite') {
 }
 
 // ============================================
-// HELMET CON CSP PARA YOUTUBE E IFRAMES
+// HELMET CON CSP PARA YOUTUBE
 // ============================================
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://s.ytimg.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://i.ytimg.com", "https://img.youtube.com"],
-      connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net"],
+      connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
       childSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
     },
@@ -70,22 +70,42 @@ const ADMIN_USER = process.env.ADMIN_USER || 'litoplas_admin';
 const ADMIN_PASS_HASH = process.env.ADMIN_PASS ? bcrypt.hashSync(process.env.ADMIN_PASS, 10) : bcrypt.hashSync('admin123', 10);
 
 // ============================================
-// HELPER: Convertir URL de YouTube a embed
+// HELPER: Convertir URL de YouTube a embed (nocookie)
 // ============================================
 function toYouTubeEmbed(url) {
   if (!url) return '';
-  // Si ya es embed, devolver tal cual
-  if (url.includes('/embed/')) return url;
-  // Convertir watch?v= a embed
-  const match = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
-  if (match) {
-    return 'https://www.youtube.com/embed/' + match[1];
+
+  // Si ya es embed de nocookie, devolver tal cual
+  if (url.includes('youtube-nocookie.com/embed/')) return url;
+
+  // Si ya es embed normal, convertir a nocookie
+  if (url.includes('youtube.com/embed/')) {
+    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch) return 'https://www.youtube-nocookie.com/embed/' + embedMatch[1];
   }
-  // Convertir youtu.be/
-  const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
-  if (shortMatch) {
-    return 'https://www.youtube.com/embed/' + shortMatch[1];
+
+  let videoId = '';
+
+  // Formato watch?v=VIDEO_ID (con o sin parámetros adicionales)
+  const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (watchMatch) videoId = watchMatch[1];
+
+  // Formato youtu.be/VIDEO_ID
+  if (!videoId) {
+    const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (shortMatch) videoId = shortMatch[1];
   }
+
+  // Formato embed/VIDEO_ID
+  if (!videoId) {
+    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (embedMatch) videoId = embedMatch[1];
+  }
+
+  if (videoId) {
+    return 'https://www.youtube-nocookie.com/embed/' + videoId;
+  }
+
   return url;
 }
 
@@ -95,15 +115,18 @@ function toYouTubeEmbed(url) {
 async function initDB() {
   if (dbType === 'postgres') {
     try {
-      // Verificar si las tablas existen pero con esquema viejo
-      const checkCol = await pool.query(`
-        SELECT column_name 
-        FROM information_schema.columns 
+      // Verificar si el esquema está completo (necesitamos users, modules, questions)
+      const checkUsers = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'full_name'
       `);
+      const checkQuestions = await pool.query(`
+        SELECT table_name FROM information_schema.tables 
+        WHERE table_name = 'questions'
+      `);
 
-      if (checkCol.rows.length === 0) {
-        console.log('⚠️ Esquema desactualizado. Recreando tablas...');
+      if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0) {
+        console.log('⚠️ Esquema incompleto. Recreando tablas...');
         await pool.query('DROP TABLE IF EXISTS user_progress CASCADE');
         await pool.query('DROP TABLE IF EXISTS questions CASCADE');
         await pool.query('DROP TABLE IF EXISTS modules CASCADE');
@@ -354,7 +377,6 @@ app.get('/api/modules', async (req, res) => {
   try {
     if (dbType === 'postgres') {
       const result = await pool.query('SELECT * FROM modules WHERE active = TRUE ORDER BY order_num');
-      // Convertir URLs de YouTube a embed
       result.rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
       res.json(result.rows);
     } else {
@@ -370,7 +392,6 @@ app.get('/api/modules', async (req, res) => {
   }
 });
 
-// Obtener un módulo con sus preguntas
 app.get('/api/modules/:id', async (req, res) => {
   try {
     const moduleId = req.params.id;
@@ -424,7 +445,6 @@ app.get('/api/progress', authMiddleware, async (req, res) => {
   }
 });
 
-// Completar módulo (ahora solo se llama al aprobar el cuestionario)
 app.post('/api/progress', authMiddleware, async (req, res) => {
   try {
     const { module_id } = req.body;
@@ -490,7 +510,6 @@ app.post('/api/progress', authMiddleware, async (req, res) => {
 // ENDPOINTS DE PREGUNTAS
 // ============================================
 
-// Obtener preguntas de un módulo (público, para el cuestionario del usuario)
 app.get('/api/modules/:id/questions', async (req, res) => {
   try {
     const moduleId = req.params.id;
@@ -509,11 +528,10 @@ app.get('/api/modules/:id/questions', async (req, res) => {
   }
 });
 
-// Validar respuestas de un módulo
 app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
   try {
     const moduleId = req.params.id;
-    const { answers } = req.body; // { questionId: 'A', ... }
+    const { answers } = req.body;
 
     let questions;
     if (dbType === 'postgres') {
@@ -528,7 +546,6 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
     }
 
     if (!questions || questions.length === 0) {
-      // Si no hay preguntas, se aprueba automáticamente
       return res.json({ success: true, approved: true, score: 100, total: 0, correct: 0 });
     }
 
@@ -538,7 +555,7 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
     });
 
     const score = Math.round((correct / questions.length) * 100);
-    const approved = score >= 70; // 70% para aprobar
+    const approved = score >= 70;
 
     res.json({ success: true, approved, score, total: questions.length, correct });
   } catch (err) {
@@ -547,7 +564,6 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin: obtener preguntas completas (con respuesta correcta)
 app.get('/api/admin/modules/:id/questions', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
@@ -567,27 +583,37 @@ app.get('/api/admin/modules/:id/questions', authMiddleware, async (req, res) => 
   }
 });
 
-// Admin: guardar preguntas de un módulo (reemplaza todas)
 app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const moduleId = req.params.id;
     const { questions } = req.body;
 
+    // Verificar que el módulo existe
     if (dbType === 'postgres') {
+      const modCheck = await pool.query('SELECT id FROM modules WHERE id = $1', [moduleId]);
+      if (modCheck.rows.length === 0) {
+        return res.status(404).json({ error: 'Módulo no encontrado' });
+      }
       await pool.query('DELETE FROM questions WHERE module_id = $1', [moduleId]);
       for (const q of questions) {
-        if (!q.question_text) continue;
+        if (!q.question_text || !q.question_text.trim()) continue;
         await pool.query(
           'INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES ($1,$2,$3,$4,$5,$6,$7)',
           [moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A']
         );
       }
     } else {
+      const modCheck = await new Promise((resolve, reject) => {
+        db.get('SELECT id FROM modules WHERE id = ?', [moduleId], (err, row) => {
+          if (err) reject(err); else resolve(row);
+        });
+      });
+      if (!modCheck) return res.status(404).json({ error: 'Módulo no encontrado' });
       db.run('DELETE FROM questions WHERE module_id = ?', [moduleId]);
       const stmt = db.prepare('INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES (?,?,?,?,?,?,?)');
       for (const q of questions) {
-        if (!q.question_text) continue;
+        if (!q.question_text || !q.question_text.trim()) continue;
         stmt.run(moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A');
       }
       stmt.finalize();
@@ -677,12 +703,18 @@ app.get('/api/public/certificate', async (req, res) => {
   }
 });
 
+// Guardar módulos: AHORA con reinicio de IDs para mantener consistencia
 app.post('/api/admin/modules', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const { modules } = req.body;
+
     if (dbType === 'postgres') {
+      // Borrar todo y reiniciar secuencias para que IDs sean 1,2,3...
       await pool.query('DELETE FROM modules');
+      await pool.query('ALTER SEQUENCE IF EXISTS modules_id_seq RESTART WITH 1');
+      await pool.query('ALTER SEQUENCE IF EXISTS questions_id_seq RESTART WITH 1');
+
       for (let i = 0; i < modules.length; i++) {
         const m = modules[i];
         await pool.query(
@@ -690,16 +722,29 @@ app.post('/api/admin/modules', authMiddleware, async (req, res) => {
           [m.title, m.description, toYouTubeEmbed(m.video_url), m.document_url, m.image_url, i + 1, m.active !== false]
         );
       }
+
+      // Devolver módulos actualizados con IDs correctos
+      const fresh = await pool.query('SELECT * FROM modules WHERE active = TRUE ORDER BY order_num');
+      fresh.rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
+      res.json({ success: true, modules: fresh.rows });
     } else {
       db.run('DELETE FROM modules');
+      db.run('DELETE FROM sqlite_sequence WHERE name = "modules"');
+      db.run('DELETE FROM sqlite_sequence WHERE name = "questions"');
+
       const stmt = db.prepare('INSERT INTO modules (title, description, video_url, document_url, image_url, order_num, active) VALUES (?,?,?,?,?,?,?)');
       for (let i = 0; i < modules.length; i++) {
         const m = modules[i];
         stmt.run(m.title, m.description, toYouTubeEmbed(m.video_url), m.document_url, m.image_url, i + 1, m.active !== false ? 1 : 0);
       }
       stmt.finalize();
+
+      db.all('SELECT * FROM modules WHERE active = 1 ORDER BY order_num', [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
+        res.json({ success: true, modules: rows });
+      });
     }
-    res.json({ success: true });
   } catch (err) {
     console.error('Error en /api/admin/modules:', err.message);
     res.status(500).json({ error: err.message });
@@ -728,6 +773,6 @@ app.post('/api/admin/reset-password', authMiddleware, async (req, res) => {
 // ============================================
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log('🚀 Litoplas Academy v5.3 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
+    console.log('🚀 Litoplas Academy v5.3.1 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
   });
 });
