@@ -3,89 +3,167 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Litoplas Academy - Panel de Administración</title>
+  <title>Litoplas Academy - Admin</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-  <div class="container">
-    <header class="header">
-      <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
-      <h1>Panel de Administración</h1>
-      <p>Litoplas Academy - Gestión de Capacitaciones</p>
-    </header>
-
-    <!-- LOGIN ADMIN -->
-    <div id="admin-login" class="auth-section">
-      <div class="auth-form">
-        <h2>Acceso Administrativo</h2>
-        <input type="text" id="admin-user" placeholder="Usuario" value="litoplas_admin">
+<body class="admin-body">
+  <div id="admin-app">
+    <!-- LOGIN -->
+    <div id="admin-login" class="auth-container">
+      <div class="auth-card">
+        <div class="logo-container">
+          <img src="images/logo-litoplas.png" alt="Litoplas" class="logo-img" onerror="this.style.display='none'">
+          <div class="logo-fallback">LITOPLAS ADMIN</div>
+        </div>
+        <h2>Panel Administrativo</h2>
+        <input type="text" id="admin-user" placeholder="Usuario admin">
         <input type="password" id="admin-pass" placeholder="Contraseña">
-        <button id="btn-admin-login" class="btn-primary">Ingresar</button>
-        <p id="admin-msg" class="msg"></p>
+        <button id="btn-admin-login">Ingresar</button>
+        <div id="admin-login-msg"></div>
       </div>
     </div>
 
-    <!-- PANEL ADMIN -->
-    <div id="admin-panel" class="admin-panel hidden">
-      <div class="admin-bar">
-        <span>Panel Administrativo</span>
-        <button id="btn-admin-logout" class="btn-secondary">Cerrar Sesión</button>
-      </div>
+    <!-- DASHBOARD -->
+    <div id="admin-dashboard" style="display:none">
+      <header class="admin-header">
+        <div class="header-left">
+          <img src="images/logo-litoplas.png" alt="Litoplas" class="header-logo" onerror="this.style.display='none'">
+          <span>Panel Administrativo</span>
+        </div>
+        <div class="header-right">
+          <span id="admin-user-name"></span>
+          <button id="btn-admin-logout">Salir</button>
+        </div>
+      </header>
 
       <div class="admin-tabs">
-        <button id="tab-search" class="admin-tab active">Buscar por Documento</button>
-        <button id="tab-users" class="admin-tab">Usuarios</button>
-        <button id="tab-expiring" class="admin-tab">Próximos a Vencer</button>
-        <button id="tab-stats" class="admin-tab">Estadísticas</button>
-        <button id="tab-content" class="admin-tab">Contenido del Curso</button>
+        <button class="tab-btn active" data-tab="gestion">Gestión de Usuarios</button>
+        <button class="tab-btn" data-tab="contenido">Contenido del Curso</button>
+        <button class="tab-btn" data-tab="estadisticas">Estadísticas</button>
       </div>
 
-      <!-- BUSCAR POR DOCUMENTO -->
-      <div id="panel-search" class="admin-panel-content">
-        <h3>Buscar Usuario por Documento</h3>
-        <div class="search-row">
-          <input type="text" id="search-document" placeholder="Número de Documento">
-          <button id="btn-search" class="btn-primary">Buscar</button>
+      <!-- GESTIÓN DE USUARIOS (unificado: buscar + listar + próximos a vencer) -->
+      <div id="tab-gestion" class="tab-content active">
+        <div class="admin-section">
+          <h2>🔍 Gestión de Usuarios</h2>
+
+          <div class="filter-bar">
+            <input type="text" id="search-user" placeholder="Buscar por documento o nombre...">
+            <select id="filter-status">
+              <option value="all">Todos los usuarios</option>
+              <option value="certified">Con certificado</option>
+              <option value="nocert">Sin certificado</option>
+              <option value="expiring">Próximos a vencer (30 días)</option>
+            </select>
+            <button id="btn-search">Buscar</button>
+            <button id="btn-clear-filters">Limpiar</button>
+          </div>
+
+          <div class="stats-row">
+            <div class="stat-card">
+              <div class="stat-num" id="stat-total">0</div>
+              <div class="stat-label">Total usuarios</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="stat-certified">0</div>
+              <div class="stat-label">Certificados</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-num" id="stat-progress">0%</div>
+              <div class="stat-label">Progreso promedio</div>
+            </div>
+            <div class="stat-card alert">
+              <div class="stat-num" id="stat-expiring">0</div>
+              <div class="stat-label">Próx. a vencer</div>
+            </div>
+          </div>
+
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Documento</th>
+                  <th>Empresa</th>
+                  <th>Progreso</th>
+                  <th>Certificado</th>
+                  <th>Vigencia</th>
+                  <th>Registro</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body"></tbody>
+            </table>
+          </div>
+          <div id="users-empty" class="empty-state-small">No hay usuarios registrados</div>
         </div>
-        <div id="search-results"></div>
-      </div>
-
-      <!-- USUARIOS -->
-      <div id="panel-users" class="admin-panel-content hidden">
-        <h3>Listado de Usuarios</h3>
-        <div id="users-table-container"></div>
-      </div>
-
-      <!-- PRÓXIMOS A VENCER -->
-      <div id="panel-expiring" class="admin-panel-content hidden">
-        <h3>Certificados Próximos a Vencer</h3>
-        <div id="expiring-table-container"></div>
-      </div>
-
-      <!-- ESTADÍSTICAS -->
-      <div id="panel-stats" class="admin-panel-content hidden">
-        <h3>Estadísticas de la Plataforma</h3>
-        <div id="stats-container"></div>
       </div>
 
       <!-- CONTENIDO DEL CURSO -->
-      <div id="panel-content" class="admin-panel-content hidden">
-        <h3>Gestión de Módulos y Preguntas</h3>
-        <p class="admin-hint">Edita cada módulo, agrega videos, documentos y preguntas. Puedes eliminar módulos o agregar nuevos.</p>
-        <div id="modules-admin-container"></div>
-        <button id="btn-save-modules" class="btn-primary">Guardar Cambios de Módulos</button>
+      <div id="tab-contenido" class="tab-content">
+        <div class="admin-section">
+          <h2>📚 Contenido del Curso</h2>
+          <button id="btn-add-module" class="btn-success">+ Agregar Nuevo Módulo</button>
+          <div id="modules-admin-list"></div>
+        </div>
       </div>
-    </div>
-  </div>
 
-  <!-- MODAL CERTIFICADO ADMIN -->
-  <div id="cert-modal" class="modal hidden">
-    <div class="modal-content">
-      <span id="cert-modal-close" class="modal-close">&times;</span>
-      <div id="cert-modal-body"></div>
-      <div class="cert-actions">
-        <button id="btn-download-cert-admin" class="btn-primary">📄 Descargar PDF</button>
+      <!-- ESTADÍSTICAS -->
+      <div id="tab-estadisticas" class="tab-content">
+        <div class="admin-section">
+          <h2>📊 Estadísticas Generales</h2>
+          <div class="stats-grid">
+            <div class="stat-box">
+              <h3>Usuarios registrados</h3>
+              <div class="big-num" id="est-total">0</div>
+            </div>
+            <div class="stat-box">
+              <h3>Certificados emitidos</h3>
+              <div class="big-num" id="est-certified">0</div>
+            </div>
+            <div class="stat-box">
+              <h3>Progreso promedio</h3>
+              <div class="big-num" id="est-avg">0%</div>
+            </div>
+            <div class="stat-box alert">
+              <h3>Próximos a vencer</h3>
+              <div class="big-num" id="est-expiring">0</div>
+            </div>
+          </div>
+
+          <h3>Registros por mes</h3>
+          <div class="filter-bar">
+            <select id="filter-year">
+              <option value="2026">2026</option>
+              <option value="2025">2025</option>
+            </select>
+            <select id="filter-month">
+              <option value="all">Todo el año</option>
+              <option value="1">Enero</option>
+              <option value="2">Febrero</option>
+              <option value="3">Marzo</option>
+              <option value="4">Abril</option>
+              <option value="5">Mayo</option>
+              <option value="6">Junio</option>
+              <option value="7">Julio</option>
+              <option value="8">Agosto</option>
+              <option value="9">Septiembre</option>
+              <option value="10">Octubre</option>
+              <option value="11">Noviembre</option>
+              <option value="12">Diciembre</option>
+            </select>
+            <button id="btn-filter-month">Filtrar</button>
+          </div>
+          <div class="table-container">
+            <table class="admin-table">
+              <thead>
+                <tr><th>Nombre</th><th>Documento</th><th>Empresa</th><th>Fecha registro</th><th>Progreso</th></tr>
+              </thead>
+              <tbody id="stats-table-body"></tbody>
+            </table>
+          </div>
+        </div>
       </div>
     </div>
   </div>

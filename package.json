@@ -1,20 +1,20 @@
 {
-  "name": "litoplas-academy-secure",
-  "version": "5.4.0",
-  "description": "Plataforma de capacitación Litoplas - Visitantes y Contratistas",
+  "name": "litoplas-academy",
+  "version": "5.5.0",
+  "description": "Plataforma de capacitación en seguridad industrial para visitantes y contratistas - Litoplas S.A.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "dependencies": {
-    "bcryptjs": "^2.4.3",
     "express": "^4.18.2",
-    "helmet": "^7.1.0",
+    "bcryptjs": "^2.4.3",
     "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.1.0",
     "pg": "^8.11.3",
     "sqlite3": "^5.1.6"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

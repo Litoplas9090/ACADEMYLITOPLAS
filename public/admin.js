@@ -1,774 +1,567 @@
-// ============================================
-// LITOPLAS ACADEMY - ADMIN.JS v5.4
-// Estadísticas, eliminar usuarios, módulos dinámicos, preguntas avanzadas
-// ============================================
-
-const API_URL = window.location.origin;
+const API = window.location.origin;
 let adminToken = localStorage.getItem('litoplas_admin_token');
+let allUsers = [];
+let allModules = [];
 
-const adminLogin = document.getElementById('admin-login');
-const adminPanel = document.getElementById('admin-panel');
-const adminUser = document.getElementById('admin-user');
-const adminPass = document.getElementById('admin-pass');
-const adminMsg = document.getElementById('admin-msg');
-const btnAdminLogin = document.getElementById('btn-admin-login');
-const btnAdminLogout = document.getElementById('btn-admin-logout');
+console.log('[ADMIN] Iniciando panel administrativo v5.5');
 
-const tabSearch = document.getElementById('tab-search');
-const tabUsers = document.getElementById('tab-users');
-const tabExpiring = document.getElementById('tab-expiring');
-const tabStats = document.getElementById('tab-stats');
-const tabContent = document.getElementById('tab-content');
-
-const panelSearch = document.getElementById('panel-search');
-const panelUsers = document.getElementById('panel-users');
-const panelExpiring = document.getElementById('panel-expiring');
-const panelStats = document.getElementById('panel-stats');
-const panelContent = document.getElementById('panel-content');
-
-const searchDocument = document.getElementById('search-document');
-const btnSearch = document.getElementById('btn-search');
-const searchResults = document.getElementById('search-results');
-
-const usersTableContainer = document.getElementById('users-table-container');
-const expiringTableContainer = document.getElementById('expiring-table-container');
-const statsContainer = document.getElementById('stats-container');
-const modulesAdminContainer = document.getElementById('modules-admin-container');
-const btnSaveModules = document.getElementById('btn-save-modules');
-
-const certModal = document.getElementById('cert-modal');
-const certModalClose = document.getElementById('cert-modal-close');
-const certModalBody = document.getElementById('cert-modal-body');
-const btnDownloadCertAdmin = document.getElementById('btn-download-cert-admin');
-
-let currentCertUser = null;
-let adminModulesData = [];
-let adminQuestionsData = {};
-
-document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.4');
-
-  btnAdminLogin.addEventListener('click', doAdminLogin);
-  btnAdminLogout.addEventListener('click', doAdminLogout);
-  adminPass.addEventListener('keypress', function(e) { if (e.key === 'Enter') doAdminLogin(); });
-
-  tabSearch.addEventListener('click', function() { showTab('search'); });
-  tabUsers.addEventListener('click', function() { showTab('users'); });
-  tabExpiring.addEventListener('click', function() { showTab('expiring'); });
-  tabStats.addEventListener('click', function() { showTab('stats'); });
-  tabContent.addEventListener('click', function() { showTab('content'); });
-
-  btnSearch.addEventListener('click', searchUser);
-  searchDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchUser(); });
-
-  btnSaveModules.addEventListener('click', saveModules);
-
-  certModalClose.addEventListener('click', closeCertModal);
-  btnDownloadCertAdmin.addEventListener('click', downloadAdminCertificate);
+document.addEventListener('DOMContentLoaded', () => {
+  setupTabs();
 
   if (adminToken) {
-    showAdminPanel();
-    loadUsers();
+    loadAdminData();
+  } else {
+    document.getElementById('admin-login').style.display = 'flex';
+    document.getElementById('admin-dashboard').style.display = 'none';
   }
+
+  document.getElementById('btn-admin-login').addEventListener('click', doAdminLogin);
+  document.getElementById('btn-admin-logout').addEventListener('click', doAdminLogout);
+  document.getElementById('btn-search').addEventListener('click', filterUsers);
+  document.getElementById('btn-clear-filters').addEventListener('click', clearFilters);
+  document.getElementById('search-user').addEventListener('input', debounce(filterUsers, 300));
+  document.getElementById('filter-status').addEventListener('change', filterUsers);
+  document.getElementById('btn-add-module').addEventListener('click', addNewModule);
+  document.getElementById('btn-filter-month').addEventListener('click', filterByMonth);
+
+  document.getElementById('admin-user').addEventListener('keypress', (e) => { if (e.key === 'Enter') doAdminLogin(); });
+  document.getElementById('admin-pass').addEventListener('keypress', (e) => { if (e.key === 'Enter') doAdminLogin(); });
 });
 
-async function doAdminLogin() {
-  const username = adminUser.value.trim();
-  const password = adminPass.value;
-  if (!username || !password) {
-    adminMsg.textContent = 'Ingresa usuario y contraseña';
-    adminMsg.className = 'msg error';
-    return;
-  }
-  btnAdminLogin.textContent = 'Ingresando...';
-  btnAdminLogin.disabled = true;
-  adminMsg.textContent = '';
+function setupTabs() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'contenido') loadModulesAdmin();
+      if (btn.dataset.tab === 'estadisticas') loadStats();
+    });
+  });
+}
 
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+}
+
+// ==================== AUTH ====================
+async function doAdminLogin() {
+  const user = document.getElementById('admin-user').value;
+  const pass = document.getElementById('admin-pass').value;
   try {
-    const res = await fetch(API_URL + '/api/admin/login', {
+    const res = await fetch(`${API}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password })
+      body: JSON.stringify({ username: user, password: pass })
     });
     const data = await res.json();
-    if (data.success) {
-      adminToken = data.token;
-      localStorage.setItem('litoplas_admin_token', adminToken);
-      adminMsg.textContent = '¡Acceso concedido!';
-      adminMsg.className = 'msg success';
-      setTimeout(() => { showAdminPanel(); loadUsers(); }, 800);
-    } else {
-      adminMsg.textContent = data.error || 'Credenciales incorrectas';
-      adminMsg.className = 'msg error';
-    }
+    if (!res.ok) throw new Error(data.error);
+    adminToken = data.token;
+    localStorage.setItem('litoplas_admin_token', adminToken);
+    loadAdminData();
   } catch (err) {
-    adminMsg.textContent = 'Error de conexión';
-    adminMsg.className = 'msg error';
-  } finally {
-    btnAdminLogin.textContent = 'Ingresar';
-    btnAdminLogin.disabled = false;
+    document.getElementById('admin-login-msg').textContent = err.message;
+    document.getElementById('admin-login-msg').className = 'msg-error';
   }
 }
 
 function doAdminLogout() {
-  localStorage.removeItem('litoplas_admin_token');
   adminToken = null;
-  adminLogin.classList.remove('hidden');
-  adminPanel.classList.add('hidden');
-  adminPass.value = '';
-  adminMsg.textContent = '';
+  localStorage.removeItem('litoplas_admin_token');
+  document.getElementById('admin-login').style.display = 'flex';
+  document.getElementById('admin-dashboard').style.display = 'none';
 }
 
-function showAdminPanel() {
-  adminLogin.classList.add('hidden');
-  adminPanel.classList.remove('hidden');
+async function loadAdminData() {
+  document.getElementById('admin-login').style.display = 'none';
+  document.getElementById('admin-dashboard').style.display = 'block';
+  document.getElementById('admin-user-name').textContent = 'Admin';
+  await loadUsers();
+  await loadStatsHeader();
 }
 
-function showTab(tab) {
-  [tabSearch, tabUsers, tabExpiring, tabStats, tabContent].forEach(t => t.classList.remove('active'));
-  [panelSearch, panelUsers, panelExpiring, panelStats, panelContent].forEach(p => p.classList.add('hidden'));
-
-  if (tab === 'search') { tabSearch.classList.add('active'); panelSearch.classList.remove('hidden'); }
-  if (tab === 'users') { tabUsers.classList.add('active'); panelUsers.classList.remove('hidden'); loadUsers(); }
-  if (tab === 'expiring') { tabExpiring.classList.add('active'); panelExpiring.classList.remove('hidden'); loadExpiring(); }
-  if (tab === 'stats') { tabStats.classList.add('active'); panelStats.classList.remove('hidden'); loadStats(); }
-  if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
-}
-
-async function searchUser() {
-  const doc = searchDocument.value.trim();
-  if (!doc) { searchResults.innerHTML = '<p class="msg">Ingresa un número de documento</p>'; return; }
-  searchResults.innerHTML = '<p>Buscando...</p>';
-
-  try {
-    const res = await fetch(API_URL + '/api/admin/users/search?document=' + encodeURIComponent(doc), {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const users = await res.json();
-    if (!users || users.length === 0) {
-      searchResults.innerHTML = '<p class="msg">No se encontró ningún usuario con ese documento</p>';
-      return;
-    }
-    renderUserCards(users, searchResults);
-  } catch (err) {
-    searchResults.innerHTML = '<p class="msg error">Error de conexión</p>';
-  }
-}
-
+// ==================== USUARIOS (GESTIÓN UNIFICADA) ====================
 async function loadUsers() {
-  usersTableContainer.innerHTML = '<p>Cargando usuarios...</p>';
   try {
-    const res = await fetch(API_URL + '/api/admin/users', {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const users = await res.json();
-    renderUserTable(users, usersTableContainer);
+    const res = await fetch(`${API}/api/admin/users`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+    if (!res.ok) throw new Error('No autorizado');
+    allUsers = await res.json();
+    renderUsers(allUsers);
   } catch (err) {
-    usersTableContainer.innerHTML = '<p class="msg error">Error cargando usuarios</p>';
+    console.error('Error cargando usuarios:', err);
+    if (err.message === 'No autorizado') doAdminLogout();
   }
 }
 
-async function loadExpiring() {
-  expiringTableContainer.innerHTML = '<p>Cargando...</p>';
-  try {
-    const res = await fetch(API_URL + '/api/admin/users', {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const users = await res.json();
-    const now = new Date();
-    const thirtyDays = new Date();
-    thirtyDays.setDate(thirtyDays.getDate() + 30);
+function renderUsers(users) {
+  const tbody = document.getElementById('users-table-body');
+  const empty = document.getElementById('users-empty');
+  tbody.innerHTML = '';
 
-    const expiring = users.filter(u => {
-      if (!u.certificate_expiry) return false;
-      const exp = new Date(u.certificate_expiry);
-      return exp <= thirtyDays && exp >= now;
-    });
-
-    if (expiring.length === 0) {
-      expiringTableContainer.innerHTML = '<p class="msg success">No hay certificados próximos a vencer en los próximos 30 días</p>';
-      return;
-    }
-    renderUserTable(expiring, expiringTableContainer, true);
-  } catch (err) {
-    expiringTableContainer.innerHTML = '<p class="msg error">Error cargando datos</p>';
-  }
-}
-
-async function loadStats() {
-  statsContainer.innerHTML = '<p>Cargando estadísticas...</p>';
-  try {
-    const res = await fetch(API_URL + '/api/admin/stats', {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const stats = await res.json();
-
-    let html = '<div class="stats-grid">';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.total_users || 0) + '</div><div class="stat-label">Total Usuarios</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.certified_users || 0) + '</div><div class="stat-label">Certificados</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.avg_progress || 0) + '%</div><div class="stat-label">Progreso Promedio</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.expiring_soon || 0) + '</div><div class="stat-label">Próximos a Vencer</div></div>';
-    html += '</div>';
-
-    // Filtros
-    html += '<div class="stats-filters">';
-    html += '<h4>Filtrar por período</h4>';
-    html += '<div class="filter-row">';
-    html += '<select id="filter-year"><option value="">Todos los años</option>' + generateYearOptions() + '</select>';
-    html += '<select id="filter-month"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>';
-    html += '<button id="btn-filter-stats" class="btn-primary" style="width:auto;padding:10px 20px;">Filtrar</button>';
-    html += '</div></div>';
-
-    // Tabla mensual
-    if (stats.monthly && stats.monthly.length > 0) {
-      html += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
-      html += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
-      stats.monthly.forEach(m => {
-        const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        html += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    } else {
-      html += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
-    }
-
-    statsContainer.innerHTML = html;
-
-    document.getElementById('btn-filter-stats').addEventListener('click', async function() {
-      const year = document.getElementById('filter-year').value;
-      const month = document.getElementById('filter-month').value;
-      let url = API_URL + '/api/admin/stats';
-      const params = [];
-      if (year) params.push('year=' + year);
-      if (month) params.push('month=' + month);
-      if (params.length > 0) url += '?' + params.join('&');
-
-      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + adminToken } });
-      const filtered = await res.json();
-
-      let tableHtml = '';
-      if (filtered.monthly && filtered.monthly.length > 0) {
-        tableHtml += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
-        tableHtml += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
-        filtered.monthly.forEach(m => {
-          const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-          tableHtml += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
-        });
-        tableHtml += '</tbody></table>';
-      } else {
-        tableHtml += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
-      }
-
-      const oldTable = statsContainer.querySelector('table');
-      const oldMsg = statsContainer.querySelector('.msg');
-      if (oldTable) oldTable.remove();
-      if (oldMsg) oldMsg.remove();
-
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = tableHtml;
-      while (tempDiv.firstChild) {
-        statsContainer.appendChild(tempDiv.firstChild);
-      }
-    });
-
-  } catch (err) {
-    statsContainer.innerHTML = '<p class="msg error">Error cargando estadísticas</p>';
-  }
-}
-
-function generateYearOptions() {
-  const currentYear = new Date().getFullYear();
-  let html = '';
-  for (let y = currentYear; y >= currentYear - 5; y--) {
-    html += '<option value="' + y + '">' + y + '</option>';
-  }
-  return html;
-}
-
-function renderUserTable(users, container, showExpiryOnly) {
-  if (!users || users.length === 0) {
-    container.innerHTML = '<p class="msg">No hay usuarios registrados</p>';
+  if (users.length === 0) {
+    empty.style.display = 'block';
     return;
   }
-  let html = '<table class="data-table"><thead><tr>';
-  html += '<th>Nombre</th><th>Documento</th><th>Empresa</th><th>Progreso</th><th>Certificado</th><th>Acciones</th>';
-  html += '</tr></thead><tbody>';
+  empty.style.display = 'none';
 
-  users.forEach(u => {
-    const certStatus = u.certificate_issued 
-      ? '<span class="badge-success">✓ Emitido</span>' 
-      : '<span class="badge-pending">Pendiente</span>';
-    const expiryText = u.certificate_expiry ? new Date(u.certificate_expiry).toLocaleDateString('es-CO') : '-';
-
-    html += '<tr>';
-    html += '<td>' + escapeHtml(u.full_name) + '</td>';
-    html += '<td>' + escapeHtml(u.document) + '</td>';
-    html += '<td>' + escapeHtml(u.company || '-') + '</td>';
-    html += '<td>' + (u.progress || 0) + '% (' + (u.completed_modules || 0) + '/' + (u.total_modules || 6) + ')</td>';
-    html += '<td>' + certStatus + '<br><small>' + expiryText + '</small></td>';
-    html += '<td>';
-    if (u.certificate_issued) {
-      html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Certificado</button> ';
-    }
-    html += '<button class="btn-small btn-reset" data-user-id="' + u.id + '">🔑 Reset Pass</button> ';
-    html += '<button class="btn-small btn-delete-user" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '">🗑️ Eliminar</button>';
-    html += '</td></tr>';
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
-
-  container.querySelectorAll('.btn-cert').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openCertificateModal(this.getAttribute('data-user-id'), this.getAttribute('data-user-name'), this.getAttribute('data-user-doc'), this.getAttribute('data-expiry'));
-    });
-  });
-  container.querySelectorAll('.btn-reset').forEach(btn => {
-    btn.addEventListener('click', function() { resetPassword(this.getAttribute('data-user-id')); });
-  });
-  container.querySelectorAll('.btn-delete-user').forEach(btn => {
-    btn.addEventListener('click', function() { deleteUser(this.getAttribute('data-user-id'), this.getAttribute('data-user-name')); });
-  });
-}
-
-function renderUserCards(users, container) {
-  if (!users || users.length === 0) return;
-  let html = '<div class="user-cards">';
-  users.forEach(u => {
-    const certStatus = u.certificate_issued 
-      ? '<span class="badge-success">Certificado Emitido</span>' 
-      : '<span class="badge-pending">Sin Certificado</span>';
-    html += '<div class="user-card">';
-    html += '<h4>' + escapeHtml(u.full_name) + '</h4>';
-    html += '<p><strong>Documento:</strong> ' + escapeHtml(u.document) + '</p>';
-    html += '<p><strong>Empresa:</strong> ' + escapeHtml(u.company || '-') + '</p>';
-    html += '<p><strong>Progreso:</strong> ' + (u.progress || 0) + '%</p>';
-    html += '<p>' + certStatus + '</p>';
-    if (u.certificate_issued) {
-      html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Ver Certificado</button>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  container.innerHTML = html;
-  container.querySelectorAll('.btn-cert').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openCertificateModal(this.getAttribute('data-user-id'), this.getAttribute('data-user-name'), this.getAttribute('data-user-doc'), this.getAttribute('data-expiry'));
-    });
-  });
-}
-
-function escapeHtml(text) {
-  if (!text) return '';
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
-}
-
-function openCertificateModal(userId, userName, userDoc, expiry) {
-  currentCertUser = { userId, userName, userDoc, expiry };
-  const expiryDate = expiry ? new Date(expiry) : new Date();
-  if (!expiry) expiryDate.setFullYear(expiryDate.getFullYear() + 1);
   const now = new Date();
+  const nextMonth = new Date();
+  nextMonth.setDate(nextMonth.getDate() + 30);
 
-  certModalBody.innerHTML = `
-    <div id="admin-cert-card" class="certificate-card">
-      <div class="cert-header">
-        <img src="images/logo-litoplas.png" alt="Litoplas" class="cert-logo" onerror="this.style.display='none'">
-      </div>
-      <div class="cert-body">
-        <h2>Certificado de Finalización</h2>
-        <h3>Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
-        <p class="cert-label">Otorgado a</p>
-        <p class="cert-name">${escapeHtml(userName)}</p>
-        <p class="cert-label">Documento</p>
-        <p class="cert-document">${escapeHtml(userDoc)}</p>
-        <p class="cert-text">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
-        <p class="cert-label">Vigente hasta</p>
-        <p class="cert-expiry">${expiryDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        <p class="cert-date">Fecha de emisión: ${now.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-      </div>
-      <div class="cert-footer">
-        <div class="cert-stripe"></div>
-      </div>
-    </div>
-  `;
-  certModal.classList.remove('hidden');
-}
+  let total = 0, certified = 0, avgProgress = 0, expiring = 0;
 
-function closeCertModal() {
-  certModal.classList.add('hidden');
-  currentCertUser = null;
-}
+  users.forEach(u => {
+    total++;
+    if (u.certificate_issued) certified++;
+    avgProgress += (u.progress || 0);
 
-function downloadAdminCertificate() {
-  const element = document.getElementById('admin-cert-card');
-  if (!element) return;
-  const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
-  const opt = {
-    margin: 0,
-    filename: 'Certificado_Litoplas_' + doc + '.pdf',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
-  };
-  html2pdf().set(opt).from(element).save();
-}
+    const expiry = u.certificate_expiry ? new Date(u.certificate_expiry) : null;
+    const isExpiring = expiry && expiry >= now && expiry <= nextMonth;
+    if (isExpiring) expiring++;
 
-async function resetPassword(userId) {
-  const newPass = prompt('Ingresa la nueva contraseña para el usuario (mínimo 6 caracteres):');
-  if (!newPass || newPass.length < 6) { alert('Contraseña inválida.'); return; }
-  try {
-    const res = await fetch(API_URL + '/api/admin/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
-      body: JSON.stringify({ userId: parseInt(userId), newPassword: newPass })
+    const certStatus = u.certificate_issued 
+      ? `<span class="badge badge-green">✓ ${expiry ? expiry.toLocaleDateString('es-CO') : 'Vigente'}</span>`
+      : '<span class="badge badge-gray">Pendiente</span>';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.full_name}</td>
+      <td><strong>${u.document}</strong></td>
+      <td>${u.company || '-'}</td>
+      <td>
+        <div class="progress-bar-bg small">
+          <div class="progress-bar-fill" style="width:${u.progress || 0}%"></div>
+        </div>
+        <small>${u.progress || 0}%</small>
+      </td>
+      <td>${certStatus}</td>
+      <td>${isExpiring ? '<span class="badge badge-red">⚠ Próximo</span>' : (expiry ? expiry.toLocaleDateString('es-CO') : '-')}</td>
+      <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('es-CO') : '-'}</td>
+      <td>
+        <button class="btn-small btn-danger btn-delete-user" data-id="${u.id}">🗑️ Eliminar</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-certified').textContent = certified;
+  document.getElementById('stat-progress').textContent = (total > 0 ? Math.round(avgProgress / total) : 0) + '%';
+  document.getElementById('stat-expiring').textContent = expiring;
+
+  document.querySelectorAll('.btn-delete-user').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      if (confirm('¿Eliminar permanentemente este usuario?')) deleteUser(id);
     });
-    const data = await res.json();
-    if (data.success) alert('Contraseña actualizada correctamente');
-    else alert('Error: ' + (data.error || 'No se pudo actualizar'));
-  } catch (err) { alert('Error de conexión'); }
+  });
 }
 
-async function deleteUser(userId, userName) {
-  if (!confirm('¿Estás seguro de eliminar al usuario "' + userName + '"? Esta acción no se puede deshacer.')) return;
+function filterUsers() {
+  const q = document.getElementById('search-user').value.toLowerCase().trim();
+  const status = document.getElementById('filter-status').value;
+  const now = new Date();
+  const nextMonth = new Date();
+  nextMonth.setDate(nextMonth.getDate() + 30);
+
+  let filtered = allUsers.filter(u => {
+    const matchQ = !q || u.document.toLowerCase().includes(q) || u.full_name.toLowerCase().includes(q);
+    let matchStatus = true;
+    if (status === 'certified') matchStatus = !!u.certificate_issued;
+    if (status === 'nocert') matchStatus = !u.certificate_issued;
+    if (status === 'expiring') {
+      const expiry = u.certificate_expiry ? new Date(u.certificate_expiry) : null;
+      matchStatus = expiry && expiry >= now && expiry <= nextMonth;
+    }
+    return matchQ && matchStatus;
+  });
+
+  renderUsers(filtered);
+}
+
+function clearFilters() {
+  document.getElementById('search-user').value = '';
+  document.getElementById('filter-status').value = 'all';
+  renderUsers(allUsers);
+}
+
+async function deleteUser(id) {
   try {
-    const res = await fetch(API_URL + '/api/admin/users/' + userId, {
+    const res = await fetch(`${API}/api/admin/users/${id}`, {
       method: 'DELETE',
-      headers: { 'Authorization': 'Bearer ' + adminToken }
+      headers: { 'Authorization': `Bearer ${adminToken}` }
     });
-    const data = await res.json();
-    if (data.success) {
-      alert('Usuario eliminado correctamente');
-      loadUsers();
-    } else {
-      alert('Error: ' + (data.error || 'No se pudo eliminar'));
-    }
-  } catch (err) { alert('Error de conexión'); }
+    if (!res.ok) throw new Error('Error');
+    allUsers = allUsers.filter(u => u.id != id);
+    renderUsers(allUsers);
+  } catch (err) {
+    alert('Error eliminando usuario');
+  }
 }
 
-// ============================================
-// GESTIÓN DE MÓDULOS Y PREGUNTAS
-// ============================================
-
-async function loadModulesAdmin() {
-  modulesAdminContainer.innerHTML = '<p>Cargando módulos...</p>';
+// ==================== STATS HEADER ====================
+async function loadStatsHeader() {
   try {
-    const modRes = await fetch(API_URL + '/api/modules');
-    adminModulesData = await modRes.json();
+    const res = await fetch(`${API}/api/admin/stats`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+    if (!res.ok) return;
+    const data = await res.json();
+    document.getElementById('stat-total').textContent = data.total;
+    document.getElementById('stat-certified').textContent = data.certified;
+    document.getElementById('stat-progress').textContent = data.avgProgress + '%';
+    document.getElementById('stat-expiring').textContent = data.expiring;
+  } catch (err) {
+    console.error('Error stats:', err);
+  }
+}
 
-    adminQuestionsData = {};
-    for (const mod of adminModulesData) {
-      try {
-        const qRes = await fetch(API_URL + '/api/admin/modules/' + mod.id + '/questions', {
-          headers: { 'Authorization': 'Bearer ' + adminToken }
-        });
-        adminQuestionsData[mod.id] = await qRes.json();
-      } catch (e) {
-        adminQuestionsData[mod.id] = [];
-      }
-    }
+// ==================== ESTADÍSTICAS ====================
+async function loadStats() {
+  await loadStatsHeader();
+  filterByMonth();
+}
 
+function filterByMonth() {
+  const year = parseInt(document.getElementById('filter-year').value);
+  const month = document.getElementById('filter-month').value;
+
+  let filtered = allUsers.filter(u => {
+    if (!u.created_at) return false;
+    const d = new Date(u.created_at);
+    if (d.getFullYear() !== year) return false;
+    if (month !== 'all' && (d.getMonth() + 1) !== parseInt(month)) return false;
+    return true;
+  });
+
+  const tbody = document.getElementById('stats-table-body');
+  tbody.innerHTML = '';
+  if (filtered.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">Sin registros</td></tr>';
+    return;
+  }
+
+  filtered.forEach(u => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${u.full_name}</td>
+      <td>${u.document}</td>
+      <td>${u.company || '-'}</td>
+      <td>${new Date(u.created_at).toLocaleDateString('es-CO')}</td>
+      <td>${u.progress || 0}%</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('est-total').textContent = filtered.length;
+  const certCount = filtered.filter(u => u.certificate_issued).length;
+  document.getElementById('est-certified').textContent = certCount;
+  const avg = filtered.length > 0 ? Math.round(filtered.reduce((a, b) => a + (b.progress || 0), 0) / filtered.length) : 0;
+  document.getElementById('est-avg').textContent = avg + '%';
+}
+
+// ==================== MÓDULOS ====================
+async function loadModulesAdmin() {
+  try {
+    const res = await fetch(`${API}/api/admin/modules`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+    allModules = await res.json();
     renderModulesAdmin();
   } catch (err) {
-    modulesAdminContainer.innerHTML = '<p class="msg error">Error cargando módulos: ' + err.message + '</p>';
+    console.error('Error cargando módulos:', err);
   }
 }
 
 function renderModulesAdmin() {
-  let html = '<div class="modules-admin-list">';
-  adminModulesData.forEach((mod, idx) => {
-    const questions = adminQuestionsData[mod.id] || [];
-    html += '<div class="module-admin-item" data-module-index="' + idx + '">';
-    html += '<div class="module-admin-header">';
-    html += '<span class="module-admin-number">' + (idx + 1) + '</span>';
-    html += '<h4>' + escapeHtml(mod.title) + '</h4>';
-    html += '<button class="btn-delete-module" data-index="' + idx + '">🗑️ Eliminar Módulo</button>';
-    html += '</div>';
+  const container = document.getElementById('modules-admin-list');
+  container.innerHTML = '';
 
-    html += '<label>Título del Módulo</label>';
-    html += '<input type="text" class="mod-title" value="' + escapeHtml(mod.title) + '">';
-    html += '<label>Descripción</label>';
-    html += '<textarea class="mod-desc" rows="2">' + escapeHtml(mod.description || '') + '</textarea>';
+  allModules.forEach((mod, idx) => {
+    const div = document.createElement('div');
+    div.className = 'module-admin-card';
+    div.innerHTML = `
+      <div class="module-admin-header">
+        <h3>Módulo ${mod.order_num}: <input type="text" class="mod-title-input" value="${mod.title}" id="mod-title-${mod.id}"></h3>
+        <button class="btn-small btn-danger btn-delete-module" data-id="${mod.id}">🗑️ Eliminar Módulo</button>
+      </div>
+      <div class="module-admin-body">
+        <label>Descripción:</label>
+        <textarea id="mod-desc-${mod.id}" rows="2">${mod.description || ''}</textarea>
 
-    // Videos del módulo
-    html += '<div class="module-videos-section">';
-    html += '<label>Videos de YouTube</label>';
-    html += '<div class="videos-list" data-module-index="' + idx + '">';
+        <label>Imagen URL:</label>
+        <input type="text" id="mod-img-${mod.id}" value="${mod.image_url || ''}" placeholder="https://...">
+
+        <label>Documento URL:</label>
+        <input type="text" id="mod-doc-${mod.id}" value="${mod.document_url || ''}" placeholder="https://...">
+
+        <label>Video principal (YouTube):</label>
+        <input type="text" id="mod-video-${mod.id}" value="${mod.video_url || ''}" placeholder="https://youtube.com/...">
+
+        <div class="videos-section">
+          <label>Videos adicionales:</label>
+          <div id="videos-list-${mod.id}"></div>
+          <button class="btn-small btn-success btn-add-video" data-id="${mod.id}">+ Agregar Video</button>
+        </div>
+
+        <label>Activo:</label>
+        <input type="checkbox" id="mod-active-${mod.id}" ${mod.active ? 'checked' : ''}>
+
+        <div class="questions-section">
+          <h4>Preguntas del Módulo</h4>
+          <div id="questions-list-${mod.id}"></div>
+          <button class="btn-small btn-success btn-add-question" data-id="${mod.id}">+ Agregar Pregunta</button>
+        </div>
+      </div>
+    `;
+    container.appendChild(div);
+
+    // Videos adicionales
+    const vidsContainer = div.querySelector(`#videos-list-${mod.id}`);
     if (mod.videos && mod.videos.length > 0) {
-      mod.videos.forEach((vid, vidx) => {
-        html += '<div class="video-input-row">';
-        html += '<input type="text" class="mod-video-url" value="' + escapeHtml(vid.video_url || '') + '" placeholder="https://www.youtube.com/watch?v=...">';
-        html += '<button class="btn-remove-video" data-mod-idx="' + idx + '" data-vid-idx="' + vidx + '">🗑️</button>';
-        html += '</div>';
+      mod.videos.forEach(v => {
+        const vDiv = document.createElement('div');
+        vDiv.className = 'video-row';
+        vDiv.innerHTML = `
+          <input type="text" class="video-url-input" value="${v.video_url}" placeholder="URL de YouTube">
+          <button class="btn-small btn-danger btn-remove-video" data-vid="${v.id}">✕</button>
+        `;
+        vidsContainer.appendChild(vDiv);
       });
     }
-    html += '</div>';
-    html += '<button class="btn-add-video" data-index="' + idx + '">+ Agregar Video</button>';
-    html += '</div>';
-
-    html += '<label>Documento del Módulo (URL)</label>';
-    html += '<input type="text" class="mod-document" value="' + escapeHtml(mod.document_url || '') + '" placeholder="https://.../documento.pdf">';
-
-    html += '<label>Activo</label>';
-    html += '<select class="mod-active"><option value="1" ' + (mod.active !== false ? 'selected' : '') + '>Sí</option><option value="0" ' + (mod.active === false ? 'selected' : '') + '>No</option></select>';
 
     // Preguntas
-    html += '<div class="questions-section">';
-    html += '<h5>📝 Preguntas del Módulo</h5>';
-    html += '<div class="questions-list" data-module-id="' + mod.id + '">';
+    loadQuestionsAdmin(mod.id);
 
-    if (questions.length === 0) {
-      html += '<p class="no-questions">No hay preguntas. El módulo se aprobará automáticamente.</p>';
-    }
-
-    questions.forEach((q, qidx) => {
-      html += renderQuestionEditor(mod.id, qidx, q);
-    });
-    html += '</div>';
-    html += '<button class="btn-add-question" data-module-id="' + mod.id + '">+ Agregar Pregunta</button>';
-    html += '</div>';
-    html += '</div>';
-  });
-  html += '</div>';
-  html += '<button id="btn-add-module" class="btn-primary" style="margin-top:20px;">+ Agregar Nuevo Módulo</button>';
-  modulesAdminContainer.innerHTML = html;
-
-  // Event listeners
-  document.querySelectorAll('.btn-add-video').forEach(btn => {
-    btn.addEventListener('click', function() {
-      addVideoInput(parseInt(this.getAttribute('data-index')));
-    });
-  });
-  document.querySelectorAll('.btn-remove-video').forEach(btn => {
-    btn.addEventListener('click', function() {
-      removeVideoInput(parseInt(this.getAttribute('data-mod-idx')), parseInt(this.getAttribute('data-vid-idx')));
-    });
-  });
-  document.querySelectorAll('.btn-add-question').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const modId = parseInt(this.getAttribute('data-module-id'));
-      addQuestionEditor(modId);
-    });
-  });
-  document.querySelectorAll('.btn-delete-module').forEach(btn => {
-    btn.addEventListener('click', function() {
-      deleteModule(parseInt(this.getAttribute('data-index')));
-    });
-  });
-  document.getElementById('btn-add-module').addEventListener('click', addNewModule);
-}
-
-function addVideoInput(moduleIndex) {
-  const list = document.querySelector('.videos-list[data-module-index="' + moduleIndex + '"]');
-  if (!list) return;
-  const row = document.createElement('div');
-  row.className = 'video-input-row';
-  row.innerHTML = '<input type="text" class="mod-video-url" placeholder="https://www.youtube.com/watch?v=..."> <button class="btn-remove-video">🗑️</button>';
-  list.appendChild(row);
-  row.querySelector('.btn-remove-video').addEventListener('click', function() {
-    row.remove();
-  });
-}
-
-function removeVideoInput(moduleIndex, videoIndex) {
-  const list = document.querySelector('.videos-list[data-module-index="' + moduleIndex + '"]');
-  if (!list) return;
-  const rows = list.querySelectorAll('.video-input-row');
-  if (rows[videoIndex]) rows[videoIndex].remove();
-}
-
-function renderQuestionEditor(moduleId, qidx, q) {
-  q = q || {};
-  const numOpts = q.num_options || 4;
-  const isMultiple = q.allow_multiple || false;
-
-  let html = '<div class="question-editor" data-qidx="' + qidx + '">';
-  html += '<div class="question-editor-header">';
-  html += '<span>Pregunta ' + (qidx + 1) + '</span>';
-  html += '<button class="btn-remove-question" data-module-id="' + moduleId + '" data-qidx="' + qidx + '">🗑️ Eliminar</button>';
-  html += '</div>';
-
-  html += '<input type="text" class="q-text-input" placeholder="Texto de la pregunta" value="' + escapeHtml(q.question_text || '') + '">';
-
-  // Video y documento de la pregunta
-  html += '<div class="question-media">';
-  html += '<label>Video de la pregunta (YouTube URL)</label>';
-  html += '<input type="text" class="q-video" placeholder="https://www.youtube.com/watch?v=..." value="' + escapeHtml(q.video_url || '') + '">';
-  html += '<label>Documento de la pregunta (URL)</label>';
-  html += '<input type="text" class="q-document" placeholder="https://.../doc.pdf" value="' + escapeHtml(q.document_url || '') + '">';
-  html += '</div>';
-
-  // Configuración de opciones
-  html += '<div class="question-config">';
-  html += '<label>Número de opciones</label>';
-  html += '<select class="q-num-options">';
-  html += '<option value="2" ' + (numOpts === 2 ? 'selected' : '') + '>2 opciones</option>';
-  html += '<option value="3" ' + (numOpts === 3 ? 'selected' : '') + '>3 opciones</option>';
-  html += '<option value="4" ' + (numOpts === 4 ? 'selected' : '') + '>4 opciones</option>';
-  html += '</select>';
-  html += '<label class="q-multiple-label"><input type="checkbox" class="q-allow-multiple" ' + (isMultiple ? 'checked' : '') + '> Permitir respuestas múltiples</label>';
-  html += '</div>';
-
-  html += '<div class="options-row">';
-  html += '<div class="option-field"><label>A)</label><input type="text" class="q-opt-a" value="' + escapeHtml(q.option_a || '') + '"></div>';
-  html += '<div class="option-field"><label>B)</label><input type="text" class="q-opt-b" value="' + escapeHtml(q.option_b || '') + '"></div>';
-  html += '<div class="option-field"><label>C)</label><input type="text" class="q-opt-c" value="' + escapeHtml(q.option_c || '') + '"></div>';
-  html += '<div class="option-field"><label>D)</label><input type="text" class="q-opt-d" value="' + escapeHtml(q.option_d || '') + '"></div>';
-  html += '</div>';
-
-  html += '<label>Respuesta(s) Correcta(s)</label>';
-  html += '<input type="text" class="q-correct" placeholder="A  o  A,B  o  B,C,D" value="' + escapeHtml(q.correct_options || 'A') + '">';
-  html += '<p class="q-hint">Separa las letras con coma si son múltiples (ej: A,B)</p>';
-
-  html += '</div>';
-  return html;
-}
-
-function addQuestionEditor(moduleId) {
-  const list = document.querySelector('.questions-list[data-module-id="' + moduleId + '"]');
-  if (!list) return;
-  const currentCount = list.querySelectorAll('.question-editor').length;
-  if (currentCount === 0) {
-    const noQ = list.querySelector('.no-questions');
-    if (noQ) noQ.remove();
-  }
-  const tempDiv = document.createElement('div');
-  tempDiv.innerHTML = renderQuestionEditor(moduleId, currentCount, {});
-  list.appendChild(tempDiv.firstElementChild);
-
-  list.querySelectorAll('.btn-remove-question').forEach(btn => {
-    btn.removeEventListener('click', handleRemoveQuestion);
-    btn.addEventListener('click', handleRemoveQuestion);
-  });
-}
-
-function handleRemoveQuestion() {
-  const modId = parseInt(this.getAttribute('data-module-id'));
-  const qidx = parseInt(this.getAttribute('data-qidx'));
-  removeQuestionEditor(modId, qidx);
-}
-
-function removeQuestionEditor(moduleId, qidx) {
-  const list = document.querySelector('.questions-list[data-module-id="' + moduleId + '"]');
-  if (!list) return;
-  const editors = list.querySelectorAll('.question-editor');
-  if (editors[qidx]) editors[qidx].remove();
-
-  const remaining = list.querySelectorAll('.question-editor');
-  if (remaining.length === 0) {
-    list.innerHTML = '<p class="no-questions">No hay preguntas. El módulo se aprobará automáticamente.</p>';
-  } else {
-    remaining.forEach((ed, idx) => {
-      ed.setAttribute('data-qidx', idx);
-      ed.querySelector('.question-editor-header span').textContent = 'Pregunta ' + (idx + 1);
-      const removeBtn = ed.querySelector('.btn-remove-question');
-      removeBtn.setAttribute('data-qidx', idx);
-    });
-  }
-}
-
-function deleteModule(index) {
-  if (!confirm('¿Eliminar este módulo? Se perderán sus preguntas y videos.')) return;
-  adminModulesData.splice(index, 1);
-  renderModulesAdmin();
-}
-
-function addNewModule() {
-  const newIndex = adminModulesData.length;
-  adminModulesData.push({
-    id: 'new_' + Date.now(),
-    title: 'Nuevo Módulo ' + (newIndex + 1),
-    description: '',
-    videos: [''],
-    document_url: '',
-    active: true
-  });
-  adminQuestionsData['new_' + Date.now()] = [];
-  renderModulesAdmin();
-  // Scroll al nuevo módulo
-  setTimeout(() => {
-    const items = document.querySelectorAll('.module-admin-item');
-    if (items[items.length - 1]) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });
-  }, 100);
-}
-
-async function saveModules() {
-  btnSaveModules.textContent = 'Guardando...';
-  btnSaveModules.disabled = true;
-
-  const items = modulesAdminContainer.querySelectorAll('.module-admin-item');
-  const modules = [];
-  items.forEach(item => {
-    const videos = [];
-    item.querySelectorAll('.mod-video-url').forEach(inp => {
-      if (inp.value.trim()) videos.push(inp.value.trim());
+    div.querySelector('.btn-delete-module').addEventListener('click', () => {
+      if (confirm('¿Eliminar este módulo? Se perderán todas sus preguntas.')) deleteModule(mod.id);
     });
 
-    modules.push({
-      title: item.querySelector('.mod-title').value,
-      description: item.querySelector('.mod-desc').value,
-      videos: videos,
-      document_url: item.querySelector('.mod-document').value,
-      active: item.querySelector('.mod-active').value === '1'
+    div.querySelector('.btn-add-video').addEventListener('click', () => {
+      const vDiv = document.createElement('div');
+      vDiv.className = 'video-row';
+      vDiv.innerHTML = `
+        <input type="text" class="video-url-input new-video" placeholder="URL de YouTube">
+        <button class="btn-small btn-danger btn-remove-video-new">✕</button>
+      `;
+      vDiv.querySelector('.btn-remove-video-new').addEventListener('click', () => vDiv.remove());
+      vidsContainer.appendChild(vDiv);
     });
+
+    div.querySelector('.btn-add-question').addEventListener('click', () => addQuestionForm(mod.id));
   });
 
+  const saveBtn = document.createElement('button');
+  saveBtn.className = 'btn-primary btn-save-all';
+  saveBtn.textContent = '💾 Guardar Cambios de Todos los Módulos';
+  saveBtn.addEventListener('click', saveAllModules);
+  container.appendChild(saveBtn);
+}
+
+async function loadQuestionsAdmin(moduleId) {
   try {
-    const modRes = await fetch(API_URL + '/api/admin/modules', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
-      body: JSON.stringify({ modules })
+    const res = await fetch(`${API}/api/modules/${moduleId}/questions`, { headers: { 'Authorization': `Bearer ${adminToken}` } });
+    const questions = await res.json();
+    const container = document.getElementById(`questions-list-${moduleId}`);
+    container.innerHTML = '';
+
+    questions.forEach((q, i) => {
+      const qDiv = document.createElement('div');
+      qDiv.className = 'question-form';
+      qDiv.innerHTML = `
+        <div class="question-header">
+          <span>Pregunta ${i+1}</span>
+          <button class="btn-small btn-danger btn-remove-question" data-qid="${q.id}">🗑️</button>
+        </div>
+        <input type="text" class="q-text" value="${q.question_text}" placeholder="Texto de la pregunta">
+
+        <label>Video de la pregunta (YouTube):</label>
+        <input type="text" class="q-video" value="${q.question_video_url || ''}" placeholder="https://youtube.com/...">
+
+        <label>Documento de la pregunta (URL):</label>
+        <input type="text" class="q-doc" value="${q.question_doc_url || ''}" placeholder="https://...">
+
+        <label>Número de opciones:</label>
+        <select class="q-numopts">
+          <option value="2" ${q.num_options === 2 ? 'selected' : ''}>2 opciones</option>
+          <option value="3" ${q.num_options === 3 ? 'selected' : ''}>3 opciones</option>
+          <option value="4" ${q.num_options === 4 || !q.num_options ? 'selected' : ''}>4 opciones</option>
+        </select>
+
+        <label><input type="checkbox" class="q-multiple" ${q.allow_multiple ? 'checked' : ''}> Permitir respuestas múltiples</label>
+
+        <div class="options-inputs">
+          <input type="text" class="q-opt-a" value="${q.option_a || ''}" placeholder="Opción A">
+          <input type="text" class="q-opt-b" value="${q.option_b || ''}" placeholder="Opción B">
+          <input type="text" class="q-opt-c" value="${q.option_c || ''}" placeholder="Opción C" ${q.num_options === 2 ? 'style="display:none"' : ''}>
+          <input type="text" class="q-opt-d" value="${q.option_d || ''}" placeholder="Opción D" ${q.num_options === 2 || q.num_options === 3 ? 'style="display:none"' : ''}>
+        </div>
+
+        <label>Respuesta(s) correcta(s):</label>
+        <input type="text" class="q-correct" value="${q.correct_option || ''}" placeholder="A  o  A,B  o  B,C,D">
+      `;
+      container.appendChild(qDiv);
+
+      const numSelect = qDiv.querySelector('.q-numopts');
+      numSelect.addEventListener('change', (e) => {
+        const num = parseInt(e.target.value);
+        qDiv.querySelector('.q-opt-c').style.display = num >= 3 ? 'block' : 'none';
+        qDiv.querySelector('.q-opt-d').style.display = num >= 4 ? 'block' : 'none';
+      });
+
+      qDiv.querySelector('.btn-remove-question').addEventListener('click', () => qDiv.remove());
     });
-    const modData = await modRes.json();
+  } catch (err) {
+    console.error('Error cargando preguntas:', err);
+  }
+}
 
-    if (!modData.success) {
-      alert('Error guardando módulos: ' + (modData.error || ''));
-      btnSaveModules.textContent = 'Guardar Cambios de Módulos';
-      btnSaveModules.disabled = false;
-      return;
-    }
+function addQuestionForm(moduleId) {
+  const container = document.getElementById(`questions-list-${moduleId}`);
+  const count = container.querySelectorAll('.question-form').length + 1;
+  const qDiv = document.createElement('div');
+  qDiv.className = 'question-form';
+  qDiv.innerHTML = `
+    <div class="question-header">
+      <span>Pregunta nueva ${count}</span>
+      <button class="btn-small btn-danger btn-remove-question-new">🗑️</button>
+    </div>
+    <input type="text" class="q-text" placeholder="Texto de la pregunta">
 
-    const freshModules = modData.modules || [];
+    <label>Video de la pregunta (YouTube):</label>
+    <input type="text" class="q-video" placeholder="https://youtube.com/...">
 
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-      const modId = freshModules[i].id;
-      const qEditors = item.querySelectorAll('.question-editor');
+    <label>Documento de la pregunta (URL):</label>
+    <input type="text" class="q-doc" placeholder="https://...">
+
+    <label>Número de opciones:</label>
+    <select class="q-numopts">
+      <option value="2">2 opciones</option>
+      <option value="3">3 opciones</option>
+      <option value="4" selected>4 opciones</option>
+    </select>
+
+    <label><input type="checkbox" class="q-multiple"> Permitir respuestas múltiples</label>
+
+    <div class="options-inputs">
+      <input type="text" class="q-opt-a" placeholder="Opción A">
+      <input type="text" class="q-opt-b" placeholder="Opción B">
+      <input type="text" class="q-opt-c" placeholder="Opción C">
+      <input type="text" class="q-opt-d" placeholder="Opción D">
+    </div>
+
+    <label>Respuesta(s) correcta(s):</label>
+    <input type="text" class="q-correct" placeholder="A  o  A,B  o  B,C,D">
+  `;
+  container.appendChild(qDiv);
+
+  const numSelect = qDiv.querySelector('.q-numopts');
+  numSelect.addEventListener('change', (e) => {
+    const num = parseInt(e.target.value);
+    qDiv.querySelector('.q-opt-c').style.display = num >= 3 ? 'block' : 'none';
+    qDiv.querySelector('.q-opt-d').style.display = num >= 4 ? 'block' : 'none';
+  });
+
+  qDiv.querySelector('.btn-remove-question-new').addEventListener('click', () => qDiv.remove());
+}
+
+async function saveAllModules() {
+  try {
+    for (const mod of allModules) {
+      const title = document.getElementById(`mod-title-${mod.id}`).value;
+      const description = document.getElementById(`mod-desc-${mod.id}`).value;
+      const video_url = document.getElementById(`mod-video-${mod.id}`).value;
+      const document_url = document.getElementById(`mod-doc-${mod.id}`).value;
+      const image_url = document.getElementById(`mod-img-${mod.id}`).value;
+      const active = document.getElementById(`mod-active-${mod.id}`).checked;
+
+      await fetch(`${API}/api/admin/modules/${mod.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+        body: JSON.stringify({ title, description, video_url, document_url, image_url, order_num: mod.order_num, active })
+      });
+
+      // Guardar videos nuevos
+      const newVideos = [];
+      document.querySelectorAll(`#videos-list-${mod.id} .new-video`).forEach(inp => {
+        if (inp.value.trim()) newVideos.push(inp.value.trim());
+      });
+      for (const vurl of newVideos) {
+        await fetch(`${API}/api/admin/modules/${mod.id}/videos`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+          body: JSON.stringify({ video_url: vurl, order_num: 0 })
+        });
+      }
+
+      // Guardar preguntas
       const questions = [];
-      qEditors.forEach(ed => {
-        const qt = ed.querySelector('.q-text-input').value.trim();
-        if (!qt) return;
+      document.querySelectorAll(`#questions-list-${mod.id} .question-form`).forEach(qDiv => {
+        const numOpts = parseInt(qDiv.querySelector('.q-numopts').value);
         questions.push({
-          question_text: qt,
-          video_url: ed.querySelector('.q-video').value,
-          document_url: ed.querySelector('.q-document').value,
-          option_a: ed.querySelector('.q-opt-a').value,
-          option_b: ed.querySelector('.q-opt-b').value,
-          option_c: ed.querySelector('.q-opt-c').value,
-          option_d: ed.querySelector('.q-opt-d').value,
-          num_options: parseInt(ed.querySelector('.q-num-options').value) || 4,
-          allow_multiple: ed.querySelector('.q-allow-multiple').checked,
-          correct_options: ed.querySelector('.q-correct').value || 'A'
+          question_text: qDiv.querySelector('.q-text').value,
+          question_video_url: qDiv.querySelector('.q-video').value,
+          question_doc_url: qDiv.querySelector('.q-doc').value,
+          option_a: qDiv.querySelector('.q-opt-a').value,
+          option_b: qDiv.querySelector('.q-opt-b').value,
+          option_c: numOpts >= 3 ? qDiv.querySelector('.q-opt-c').value : '',
+          option_d: numOpts >= 4 ? qDiv.querySelector('.q-opt-d').value : '',
+          correct_option: qDiv.querySelector('.q-correct').value.toUpperCase(),
+          num_options: numOpts,
+          allow_multiple: qDiv.querySelector('.q-multiple').checked
         });
       });
 
-      const qRes = await fetch(API_URL + '/api/admin/modules/' + modId + '/questions', {
+      const qRes = await fetch(`${API}/api/admin/modules/${mod.id}/questions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
         body: JSON.stringify({ questions })
       });
-      const qData = await qRes.json();
-      if (!qData.success) {
-        console.error('Error guardando preguntas para módulo ' + modId + ':', qData.error);
+      if (!qRes.ok) {
+        const err = await qRes.json();
+        console.error('Error guardando preguntas módulo', mod.id, err);
       }
     }
-
     alert('Módulos y preguntas guardados correctamente');
     loadModulesAdmin();
   } catch (err) {
-    alert('Error de conexión al guardar: ' + err.message);
-  } finally {
-    btnSaveModules.textContent = 'Guardar Cambios de Módulos';
-    btnSaveModules.disabled = false;
+    console.error('Error guardando:', err);
+    alert('Error guardando cambios: ' + err.message);
+  }
+}
+
+async function deleteModule(id) {
+  try {
+    await fetch(`${API}/api/admin/modules/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${adminToken}` }
+    });
+    loadModulesAdmin();
+  } catch (err) {
+    alert('Error eliminando módulo');
+  }
+}
+
+async function addNewModule() {
+  try {
+    const maxOrder = allModules.length > 0 ? Math.max(...allModules.map(m => m.order_num)) : 0;
+    const res = await fetch(`${API}/api/admin/modules`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        title: `Nuevo Módulo ${maxOrder + 1}`,
+        description: 'Descripción del nuevo módulo',
+        video_url: '',
+        document_url: '',
+        image_url: '',
+        order_num: maxOrder + 1,
+        active: true
+      })
+    });
+    if (!res.ok) throw new Error('Error');
+    loadModulesAdmin();
+  } catch (err) {
+    alert('Error creando módulo');
   }
 }

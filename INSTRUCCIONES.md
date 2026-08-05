@@ -1,21 +1,34 @@
-# Litoplas Academy v5.3 - Instrucciones
+# Litoplas Academy v5.5.2
 
-## Novedades de esta versión
-- Curso secuencial obligatorio (sin botón manual de completar)
-- Cuestionario por módulo con preguntas configurables desde admin
-- Corrección de videos de YouTube (CSP + conversión automática a embed)
-- Panel admin con gestión completa de preguntas (4 opciones + respuesta correcta)
+## Variables de entorno en Render
 
-## Variables de entorno
-| Variable | Valor |
-|----------|-------|
-| DATABASE_URL | (Render la crea automáticamente) |
-| ADMIN_USER | litoplas_admin |
-| ADMIN_PASS | Tu contraseña |
-| JWT_SECRET | Texto largo aleatorio |
-| NODE_ENV | production |
+| Variable | Valor | Obligatoria |
+|----------|-------|-------------|
+| DATABASE_URL | postgresql://... | Sí (PostgreSQL) |
+| ADMIN_USER | litoplas_admin | Sí |
+| ADMIN_PASS | Lit0plas2026 | Sí |
+| JWT_SECRET | Litoplas2024SecureKeyRandom123! | Sí |
+| NODE_ENV | production | Sí |
+| CORS_ORIGIN | https://tu-url.onrender.com | Recomendada |
 
 ## URLs
-- Curso: /index.html
-- Admin: /admin.html
-- Consulta pública: /consulta.html
+- Curso: https://tu-url.onrender.com
+- Admin: https://tu-url.onrender.com/admin.html
+- Consulta pública: https://tu-url.onrender.com/consulta.html
+- Política de Privacidad: https://tu-url.onrender.com/privacidad.html
+
+## Cambios v5.5.2
+- Política de Privacidad REAL de Litoplas S.A. (Ley 1581 de 2012, Decreto 1377 de 2013)
+- Datos oficiales: NIT 802.009.663-3, Carrera 15 Sur #51B-999, Barranquilla
+- Correo oficial: integridad@litoplas.com
+- Checkbox de autorización obligatorio en registro
+- Documento alfanumérico (soporta pasaportes y documentos extranjeros)
+- Selector de idioma: Español, English, Português
+- Panel admin unificado: Gestión de Usuarios (búsqueda + listado + próximos a vencer)
+- Estadísticas con filtros por año y mes
+- Videos de YouTube con conversión automática a nocookie
+- Preguntas con videos y documentos adjuntos
+- Respuestas múltiples y cantidad variable de opciones (2, 3 o 4)
+- Eliminación de usuarios desde admin
+- Múltiples videos por módulo
+- Crear y eliminar módulos desde admin
