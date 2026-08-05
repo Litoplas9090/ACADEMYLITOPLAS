@@ -1,0 +1,538 @@
+// ============================================
+// LITOPLAS ACADEMY - APP.JS v5.3
+// Curso secuencial obligatorio con cuestionario
+// ============================================
+
+const API_URL = window.location.origin;
+let currentToken = localStorage.getItem('litoplas_token');
+let currentUser = null;
+let allModules = [];
+let userProgress = [];
+let currentModuleIndex = 0;
+
+// DOM refs
+const authSection = document.getElementById('auth-section');
+const loginForm = document.getElementById('login-form');
+const registerForm = document.getElementById('register-form');
+const dashboard = document.getElementById('dashboard');
+const courseView = document.getElementById('course-view');
+const moduleNav = document.getElementById('module-nav');
+const activeModule = document.getElementById('active-module');
+const quizSection = document.getElementById('quiz-section');
+const certificateSection = document.getElementById('certificate-section');
+
+// Tabs
+const tabLogin = document.getElementById('tab-login');
+const tabRegister = document.getElementById('tab-register');
+
+// Inputs
+const loginDocument = document.getElementById('login-document');
+const loginPassword = document.getElementById('login-password');
+const loginMsg = document.getElementById('login-msg');
+const regFullname = document.getElementById('reg-fullname');
+const regDocument = document.getElementById('reg-document');
+const regCompany = document.getElementById('reg-company');
+const regPassword = document.getElementById('reg-password');
+const regPassword2 = document.getElementById('reg-password2');
+const registerMsg = document.getElementById('register-msg');
+
+// Botones
+const btnLogin = document.getElementById('btn-login');
+const btnRegister = document.getElementById('btn-register');
+const btnLogout = document.getElementById('btn-logout');
+const btnDownloadCert = document.getElementById('btn-download-cert');
+const btnBackCourse = document.getElementById('btn-back-course');
+
+// Progress
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+const userName = document.getElementById('user-name');
+
+// Certificado
+const certName = document.getElementById('cert-name');
+const certDocument = document.getElementById('cert-document');
+const certExpiry = document.getElementById('cert-expiry');
+const certDate = document.getElementById('cert-date');
+
+// ============================================
+// EVENT LISTENERS
+// ============================================
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('[APP] Iniciando Litoplas Academy v5.3');
+
+  tabLogin.addEventListener('click', showLogin);
+  tabRegister.addEventListener('click', showRegister);
+  btnLogin.addEventListener('click', doLogin);
+  btnRegister.addEventListener('click', doRegister);
+  btnLogout.addEventListener('click', doLogout);
+  btnDownloadCert.addEventListener('click', downloadCertificatePDF);
+  btnBackCourse.addEventListener('click', showCourse);
+
+  loginPassword.addEventListener('keypress', function(e) { if (e.key === 'Enter') doLogin(); });
+  regPassword2.addEventListener('keypress', function(e) { if (e.key === 'Enter') doRegister(); });
+
+  if (currentToken) {
+    showDashboard();
+    loadCourseData();
+  }
+});
+
+// ============================================
+// NAVEGACIÓN
+// ============================================
+
+function showLogin() {
+  tabLogin.classList.add('active');
+  tabRegister.classList.remove('active');
+  loginForm.classList.remove('hidden');
+  registerForm.classList.add('hidden');
+  loginMsg.textContent = '';
+}
+
+function showRegister() {
+  tabRegister.classList.add('active');
+  tabLogin.classList.remove('active');
+  registerForm.classList.remove('hidden');
+  loginForm.classList.add('hidden');
+  registerMsg.textContent = '';
+}
+
+function showDashboard() {
+  authSection.classList.add('hidden');
+  dashboard.classList.remove('hidden');
+  certificateSection.classList.add('hidden');
+  courseView.classList.remove('hidden');
+}
+
+function showCourse() {
+  certificateSection.classList.add('hidden');
+  courseView.classList.remove('hidden');
+  loadCourseData();
+}
+
+// ============================================
+// LOGIN / REGISTRO / LOGOUT
+// ============================================
+
+async function doLogin() {
+  const documento = loginDocument.value.trim();
+  const password = loginPassword.value;
+  if (!documento || !password) {
+    loginMsg.textContent = 'Ingresa documento y contraseña';
+    loginMsg.className = 'msg error';
+    return;
+  }
+  btnLogin.textContent = 'Ingresando...';
+  btnLogin.disabled = true;
+  loginMsg.textContent = '';
+
+  try {
+    const res = await fetch(API_URL + '/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ document: documento, password: password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentToken = data.token;
+      currentUser = data.user;
+      localStorage.setItem('litoplas_token', currentToken);
+      loginMsg.textContent = '¡Bienvenido, ' + data.user.full_name + '!';
+      loginMsg.className = 'msg success';
+      setTimeout(() => {
+        showDashboard();
+        updateUserBar(data.user);
+        loadCourseData();
+      }, 800);
+    } else {
+      loginMsg.textContent = data.error || 'Error al iniciar sesión';
+      loginMsg.className = 'msg error';
+    }
+  } catch (err) {
+    loginMsg.textContent = 'Error de conexión';
+    loginMsg.className = 'msg error';
+  } finally {
+    btnLogin.textContent = 'Ingresar';
+    btnLogin.disabled = false;
+  }
+}
+
+async function doRegister() {
+  const fullname = regFullname.value.trim();
+  const documento = regDocument.value.trim();
+  const company = regCompany.value.trim();
+  const password = regPassword.value;
+  const password2 = regPassword2.value;
+
+  if (!fullname || !documento || !password) {
+    registerMsg.textContent = 'Nombre, documento y contraseña son obligatorios';
+    registerMsg.className = 'msg error';
+    return;
+  }
+  if (password !== password2) {
+    registerMsg.textContent = 'Las contraseñas no coinciden';
+    registerMsg.className = 'msg error';
+    return;
+  }
+  if (password.length < 6) {
+    registerMsg.textContent = 'La contraseña debe tener al menos 6 caracteres';
+    registerMsg.className = 'msg error';
+    return;
+  }
+
+  btnRegister.textContent = 'Registrando...';
+  btnRegister.disabled = true;
+  registerMsg.textContent = '';
+
+  try {
+    const res = await fetch(API_URL + '/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ full_name: fullname, document: documento, email: '', company: company, password: password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      currentToken = data.token;
+      currentUser = data.user;
+      localStorage.setItem('litoplas_token', currentToken);
+      registerMsg.textContent = '¡Registro exitoso! Bienvenido, ' + data.user.full_name;
+      registerMsg.className = 'msg success';
+      setTimeout(() => {
+        showDashboard();
+        updateUserBar(data.user);
+        loadCourseData();
+      }, 1500);
+    } else {
+      registerMsg.textContent = data.error || 'Error al registrar';
+      registerMsg.className = 'msg error';
+    }
+  } catch (err) {
+    registerMsg.textContent = 'Error de conexión';
+    registerMsg.className = 'msg error';
+  } finally {
+    btnRegister.textContent = 'Crear Cuenta';
+    btnRegister.disabled = false;
+  }
+}
+
+function doLogout() {
+  localStorage.removeItem('litoplas_token');
+  currentToken = null;
+  currentUser = null;
+  allModules = [];
+  userProgress = [];
+  authSection.classList.remove('hidden');
+  dashboard.classList.add('hidden');
+  certificateSection.classList.add('hidden');
+  loginDocument.value = '';
+  loginPassword.value = '';
+  loginMsg.textContent = '';
+  showLogin();
+}
+
+function updateUserBar(user) {
+  userName.textContent = user.full_name;
+  const pct = user.progress || 0;
+  progressFill.style.width = pct + '%';
+  progressText.textContent = pct + '%';
+}
+
+// ============================================
+// CARGAR CURSO SECUENCIAL
+// ============================================
+
+async function loadCourseData() {
+  if (!currentToken) return;
+  try {
+    const [modRes, progRes] = await Promise.all([
+      fetch(API_URL + '/api/modules'),
+      fetch(API_URL + '/api/progress', { headers: { 'Authorization': 'Bearer ' + currentToken } })
+    ]);
+    allModules = await modRes.json();
+    userProgress = await progRes.json();
+    renderModuleNav();
+    renderActiveModule();
+  } catch (err) {
+    console.error('Error cargando curso:', err);
+  }
+}
+
+function isModuleCompleted(moduleId) {
+  return userProgress.some(p => p.module_id == moduleId && p.completed);
+}
+
+function getLastCompletedIndex() {
+  for (let i = allModules.length - 1; i >= 0; i--) {
+    if (isModuleCompleted(allModules[i].id)) return i;
+  }
+  return -1;
+}
+
+// ============================================
+// NAVEGACIÓN DE MÓDULOS
+// ============================================
+
+function renderModuleNav() {
+  moduleNav.innerHTML = '';
+  const lastCompleted = getLastCompletedIndex();
+
+  allModules.forEach((mod, idx) => {
+    const completed = isModuleCompleted(mod.id);
+    const isCurrent = idx === currentModuleIndex;
+    const isLocked = idx > lastCompleted + 1;
+
+    const btn = document.createElement('button');
+    btn.className = 'nav-module-btn' + (completed ? ' completed' : '') + (isCurrent ? ' current' : '') + (isLocked ? ' locked' : '');
+    btn.textContent = (idx + 1);
+    btn.title = mod.title;
+    if (!isLocked) {
+      btn.addEventListener('click', function() {
+        currentModuleIndex = idx;
+        renderModuleNav();
+        renderActiveModule();
+      });
+    }
+    moduleNav.appendChild(btn);
+  });
+}
+
+function renderActiveModule() {
+  activeModule.innerHTML = '';
+  quizSection.innerHTML = '';
+  quizSection.classList.add('hidden');
+
+  if (!allModules[currentModuleIndex]) return;
+  const mod = allModules[currentModuleIndex];
+  const completed = isModuleCompleted(mod.id);
+  const isLast = currentModuleIndex === allModules.length - 1;
+
+  const card = document.createElement('div');
+  card.className = 'module-active-card';
+
+  let html = '<div class="module-active-header">';
+  html += '<span class="module-active-number">Módulo ' + (currentModuleIndex + 1) + '</span>';
+  html += '<h2>' + escapeHtml(mod.title) + '</h2>';
+  html += '</div>';
+  html += '<p class="module-active-desc">' + escapeHtml(mod.description || '') + '</p>';
+
+  if (mod.video_url) {
+    html += '<div class="video-container">';
+    html += '<iframe src="' + escapeHtml(mod.video_url) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    html += '</div>';
+  }
+
+  // Si ya está completado, mostrar mensaje y botón para siguiente
+  if (completed) {
+    html += '<div class="module-completed-msg">✓ Este módulo ya ha sido completado</div>';
+    if (!isLast) {
+      html += '<button id="btn-next-module" class="btn-primary">Continuar al siguiente módulo →</button>';
+    } else {
+      html += '<button id="btn-view-cert" class="btn-primary">🏆 Ver Certificado</button>';
+    }
+  } else {
+    // No completado: mostrar cuestionario si hay preguntas, o botón continuar si no hay
+    html += '<div class="module-action-area">';
+    html += '<button id="btn-start-quiz" class="btn-primary">Responder Cuestionario para continuar</button>';
+    html += '</div>';
+  }
+
+  card.innerHTML = html;
+  activeModule.appendChild(card);
+
+  // Event listeners dinámicos
+  const btnNext = document.getElementById('btn-next-module');
+  if (btnNext) btnNext.addEventListener('click', function() {
+    currentModuleIndex++;
+    renderModuleNav();
+    renderActiveModule();
+  });
+
+  const btnViewCert = document.getElementById('btn-view-cert');
+  if (btnViewCert) btnViewCert.addEventListener('click', showCertificateView);
+
+  const btnStartQuiz = document.getElementById('btn-start-quiz');
+  if (btnStartQuiz) btnStartQuiz.addEventListener('click', function() {
+    loadQuiz(mod.id);
+  });
+}
+
+// ============================================
+// CUESTIONARIO
+// ============================================
+
+async function loadQuiz(moduleId) {
+  quizSection.innerHTML = '<p>Cargando cuestionario...</p>';
+  quizSection.classList.remove('hidden');
+
+  try {
+    const res = await fetch(API_URL + '/api/modules/' + moduleId + '/questions');
+    const questions = await res.json();
+
+    if (!questions || questions.length === 0) {
+      // Sin preguntas: aprobar automáticamente
+      await completeModule(moduleId);
+      return;
+    }
+
+    let html = '<div class="quiz-card">';
+    html += '<h3>Cuestionario del Módulo</h3>';
+    html += '<p>Responde todas las preguntas correctamente para avanzar. Necesitas mínimo 70%.</p>';
+    html += '<div class="quiz-questions">';
+
+    questions.forEach((q, idx) => {
+      html += '<div class="quiz-question" data-qid="' + q.id + '">';
+      html += '<p class="q-text"><strong>' + (idx + 1) + '.</strong> ' + escapeHtml(q.question_text) + '</p>';
+      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="A"> ' + escapeHtml(q.option_a) + '</label>';
+      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="B"> ' + escapeHtml(q.option_b) + '</label>';
+      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="C"> ' + escapeHtml(q.option_c) + '</label>';
+      html += '<label class="q-option"><input type="radio" name="q_' + q.id + '" value="D"> ' + escapeHtml(q.option_d) + '</label>';
+      html += '</div>';
+    });
+
+    html += '</div>';
+    html += '<button id="btn-submit-quiz" class="btn-primary">Enviar Respuestas</button>';
+    html += '<p id="quiz-msg" class="msg"></p>';
+    html += '</div>';
+
+    quizSection.innerHTML = html;
+
+    document.getElementById('btn-submit-quiz').addEventListener('click', function() {
+      submitQuiz(moduleId, questions);
+    });
+
+  } catch (err) {
+    quizSection.innerHTML = '<p class="msg error">Error cargando cuestionario</p>';
+  }
+}
+
+async function submitQuiz(moduleId, questions) {
+  const answers = {};
+  let allAnswered = true;
+
+  questions.forEach(q => {
+    const selected = document.querySelector('input[name="q_' + q.id + '"]:checked');
+    if (selected) {
+      answers[q.id] = selected.value;
+    } else {
+      allAnswered = false;
+    }
+  });
+
+  if (!allAnswered) {
+    document.getElementById('quiz-msg').textContent = 'Responde todas las preguntas antes de enviar';
+    document.getElementById('quiz-msg').className = 'msg error';
+    return;
+  }
+
+  try {
+    const res = await fetch(API_URL + '/api/modules/' + moduleId + '/validate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + currentToken
+      },
+      body: JSON.stringify({ answers })
+    });
+    const data = await res.json();
+
+    if (data.approved) {
+      document.getElementById('quiz-msg').textContent = '¡Felicidades! Aprobaste con ' + data.score + '%. Avanzando...';
+      document.getElementById('quiz-msg').className = 'msg success';
+      setTimeout(() => {
+        completeModule(moduleId);
+      }, 1500);
+    } else {
+      document.getElementById('quiz-msg').textContent = 'Obtuviste ' + data.score + '%. Necesitas mínimo 70% para aprobar. Intenta de nuevo.';
+      document.getElementById('quiz-msg').className = 'msg error';
+    }
+  } catch (err) {
+    document.getElementById('quiz-msg').textContent = 'Error validando respuestas';
+    document.getElementById('quiz-msg').className = 'msg error';
+  }
+}
+
+async function completeModule(moduleId) {
+  try {
+    const res = await fetch(API_URL + '/api/progress', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + currentToken
+      },
+      body: JSON.stringify({ module_id: moduleId })
+    });
+    const data = await res.json();
+
+    if (data.success) {
+      // Recargar progreso
+      const progRes = await fetch(API_URL + '/api/progress', { headers: { 'Authorization': 'Bearer ' + currentToken } });
+      userProgress = await progRes.json();
+      updateUserBar({ progress: data.progress });
+      renderModuleNav();
+      renderActiveModule();
+
+      if (data.certificate_issued) {
+        setTimeout(() => {
+          showCertificateView(data.certificate_expiry);
+        }, 500);
+      }
+    }
+  } catch (err) {
+    alert('Error al guardar progreso: ' + err.message);
+  }
+}
+
+// ============================================
+// CERTIFICADO
+// ============================================
+
+async function showCertificateView(expiryDate) {
+  courseView.classList.add('hidden');
+  certificateSection.classList.remove('hidden');
+
+  try {
+    const res = await fetch(API_URL + '/api/public/certificate?document=' + encodeURIComponent(currentUser?.document || ''), {
+      headers: { 'Authorization': 'Bearer ' + currentToken }
+    });
+    const userData = await res.json();
+
+    if (userData) {
+      certName.textContent = userData.full_name;
+      certDocument.textContent = userData.document;
+      const expiry = expiryDate || userData.certificate_expiry;
+      if (expiry) {
+        const d = new Date(expiry);
+        certExpiry.textContent = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      } else {
+        const d = new Date();
+        d.setFullYear(d.getFullYear() + 1);
+        certExpiry.textContent = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      const now = new Date();
+      certDate.textContent = 'Fecha de emisión: ' + now.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+  } catch (err) {
+    console.error('Error cargando certificado:', err);
+  }
+}
+
+function downloadCertificatePDF() {
+  const element = document.getElementById('certificate-card');
+  if (!element) return;
+  const opt = {
+    margin: 0,
+    filename: 'Certificado_Litoplas_' + (currentUser?.document || 'usuario') + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+  };
+  html2pdf().set(opt).from(element).save();
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}

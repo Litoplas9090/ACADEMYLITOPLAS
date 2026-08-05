@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Litoplas Academy - Capacitación en Seguridad</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- HEADER -->
+    <header class="header">
+      <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
+      <h1>Litoplas Academy</h1>
+      <p>Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
+    </header>
+
+    <!-- LOGIN / REGISTRO -->
+    <div id="auth-section" class="auth-section">
+      <div class="auth-tabs">
+        <button id="tab-login" class="auth-tab active">Iniciar Sesión</button>
+        <button id="tab-register" class="auth-tab">Registrarse</button>
+      </div>
+
+      <div id="login-form" class="auth-form">
+        <h2>Iniciar Sesión</h2>
+        <input type="text" id="login-document" placeholder="Número de Documento" required>
+        <input type="password" id="login-password" placeholder="Contraseña" required>
+        <button id="btn-login" class="btn-primary">Ingresar</button>
+        <p id="login-msg" class="msg"></p>
+      </div>
+
+      <div id="register-form" class="auth-form hidden">
+        <h2>Registro de Nuevo Usuario</h2>
+        <input type="text" id="reg-fullname" placeholder="Nombre Completo *" required>
+        <input type="text" id="reg-document" placeholder="Número de Documento *" required>
+        <input type="text" id="reg-company" placeholder="Empresa / Contratista">
+        <input type="password" id="reg-password" placeholder="Contraseña *" required>
+        <input type="password" id="reg-password2" placeholder="Confirmar Contraseña *" required>
+        <button id="btn-register" class="btn-primary">Crear Cuenta</button>
+        <p id="register-msg" class="msg"></p>
+      </div>
+    </div>
+
+    <!-- DASHBOARD DEL CURSO -->
+    <div id="dashboard" class="dashboard hidden">
+      <div class="user-bar">
+        <span id="user-name"></span>
+        <div class="progress-bar-container">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <span id="progress-text">0%</span>
+        <button id="btn-logout" class="btn-secondary">Cerrar Sesión</button>
+      </div>
+
+      <!-- CURSO SECUENCIAL: Solo se muestra un módulo a la vez -->
+      <div id="course-view" class="course-view">
+        <div id="module-nav" class="module-nav"></div>
+        <div id="active-module" class="active-module"></div>
+        <div id="quiz-section" class="quiz-section hidden"></div>
+      </div>
+
+      <!-- CERTIFICADO -->
+      <div id="certificate-section" class="certificate-section hidden">
+        <div id="certificate-card" class="certificate-card">
+          <div class="cert-header">
+            <img src="images/logo-litoplas.png" alt="Litoplas" class="cert-logo" onerror="this.style.display='none'">
+          </div>
+          <div class="cert-body">
+            <h2>Certificado de Finalización</h2>
+            <h3>Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
+            <p class="cert-label">Otorgado a</p>
+            <p id="cert-name" class="cert-name"></p>
+            <p class="cert-label">Documento</p>
+            <p id="cert-document" class="cert-document"></p>
+            <p class="cert-text">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
+            <p class="cert-label">Vigente hasta</p>
+            <p id="cert-expiry" class="cert-expiry"></p>
+            <p class="cert-date" id="cert-date"></p>
+          </div>
+          <div class="cert-footer">
+            <div class="cert-stripe"></div>
+          </div>
+        </div>
+        <div class="cert-actions">
+          <button id="btn-download-cert" class="btn-primary">📄 Descargar PDF</button>
+          <button id="btn-back-course" class="btn-secondary">Volver al Curso</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

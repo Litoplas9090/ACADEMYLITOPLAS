@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Litoplas Academy - Consulta de Certificado</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
+      <h1>Consulta de Certificado</h1>
+      <p>Verifique la validez de su certificación de seguridad industrial</p>
+    </header>
+
+    <div class="auth-section">
+      <div class="auth-form">
+        <h2>Verificar Certificado</h2>
+        <input type="text" id="query-document" placeholder="Número de Documento">
+        <button id="btn-query" class="btn-primary">Consultar</button>
+        <p id="query-msg" class="msg"></p>
+        <div id="query-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = window.location.origin;
+    const queryDocument = document.getElementById('query-document');
+    const btnQuery = document.getElementById('btn-query');
+    const queryMsg = document.getElementById('query-msg');
+    const queryResult = document.getElementById('query-result');
+
+    btnQuery.addEventListener('click', async function() {
+      const doc = queryDocument.value.trim();
+      if (!doc) { queryMsg.textContent = 'Ingresa un número de documento'; queryMsg.className = 'msg error'; return; }
+      queryMsg.textContent = 'Consultando...';
+      queryMsg.className = 'msg';
+      queryResult.innerHTML = '';
+      try {
+        const res = await fetch(API_URL + '/api/public/certificate?document=' + encodeURIComponent(doc));
+        const data = await res.json();
+        if (!data) {
+          queryMsg.textContent = 'No se encontró certificado para ese documento';
+          queryMsg.className = 'msg error';
+          return;
+        }
+        if (data.certificate_issued) {
+          const exp = data.certificate_expiry ? new Date(data.certificate_expiry) : null;
+          const now = new Date();
+          const isValid = exp && exp > now;
+          queryResult.innerHTML = `
+            <div class="cert-result ${isValid ? 'valid' : 'expired'}">
+              <h3>${isValid ? '✅ Certificado Válido' : '⚠️ Certificado Vencido'}</h3>
+              <p><strong>Nombre:</strong> ${data.full_name}</p>
+              <p><strong>Documento:</strong> ${data.document}</p>
+              <p><strong>Vigente hasta:</strong> ${exp ? exp.toLocaleDateString('es-CO') : 'No especificada'}</p>
+            </div>
+          `;
+          queryMsg.textContent = '';
+        } else {
+          queryMsg.textContent = 'El usuario existe pero no ha completado el curso';
+          queryMsg.className = 'msg error';
+        }
+      } catch (err) {
+        queryMsg.textContent = 'Error de conexión';
+        queryMsg.className = 'msg error';
+      }
+    });
+
+    queryDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') btnQuery.click(); });
+  </script>
+</body>
+</html>
