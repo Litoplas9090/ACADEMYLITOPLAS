@@ -74,38 +74,25 @@ const ADMIN_PASS_HASH = process.env.ADMIN_PASS ? bcrypt.hashSync(process.env.ADM
 // ============================================
 function toYouTubeEmbed(url) {
   if (!url) return '';
-
-  // Si ya es embed de nocookie, devolver tal cual
   if (url.includes('youtube-nocookie.com/embed/')) return url;
-
-  // Si ya es embed normal, convertir a nocookie
   if (url.includes('youtube.com/embed/')) {
     const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
     if (embedMatch) return 'https://www.youtube-nocookie.com/embed/' + embedMatch[1];
   }
-
   let videoId = '';
-
-  // Formato watch?v=VIDEO_ID (con o sin parámetros adicionales)
   const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
   if (watchMatch) videoId = watchMatch[1];
-
-  // Formato youtu.be/VIDEO_ID
   if (!videoId) {
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
     if (shortMatch) videoId = shortMatch[1];
   }
-
-  // Formato embed/VIDEO_ID
   if (!videoId) {
     const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
     if (embedMatch) videoId = embedMatch[1];
   }
-
   if (videoId) {
     return 'https://www.youtube-nocookie.com/embed/' + videoId;
   }
-
   return url;
 }
 
@@ -115,18 +102,19 @@ function toYouTubeEmbed(url) {
 async function initDB() {
   if (dbType === 'postgres') {
     try {
-      // Verificar si el esquema está completo (necesitamos users, modules, questions)
+      // Verificar si users tiene full_name
       const checkUsers = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'full_name'
       `);
+      // Verificar si questions tiene option_a (columna clave del esquema correcto)
       const checkQuestions = await pool.query(`
-        SELECT table_name FROM information_schema.tables 
-        WHERE table_name = 'questions'
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'questions' AND column_name = 'option_a'
       `);
 
       if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0) {
-        console.log('⚠️ Esquema incompleto. Recreando tablas...');
+        console.log('⚠️ Esquema incompleto o desactualizado. Recreando TODAS las tablas...');
         await pool.query('DROP TABLE IF EXISTS user_progress CASCADE');
         await pool.query('DROP TABLE IF EXISTS questions CASCADE');
         await pool.query('DROP TABLE IF EXISTS modules CASCADE');
@@ -589,7 +577,6 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
     const moduleId = req.params.id;
     const { questions } = req.body;
 
-    // Verificar que el módulo existe
     if (dbType === 'postgres') {
       const modCheck = await pool.query('SELECT id FROM modules WHERE id = $1', [moduleId]);
       if (modCheck.rows.length === 0) {
@@ -597,7 +584,7 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
       }
       await pool.query('DELETE FROM questions WHERE module_id = $1', [moduleId]);
       for (const q of questions) {
-        if (!q.question_text || !q.question_text.trim()) continue;
+        if (!q.question_text) continue;
         await pool.query(
           'INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES ($1,$2,$3,$4,$5,$6,$7)',
           [moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A']
@@ -613,7 +600,7 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
       db.run('DELETE FROM questions WHERE module_id = ?', [moduleId]);
       const stmt = db.prepare('INSERT INTO questions (module_id, question_text, option_a, option_b, option_c, option_d, correct_option) VALUES (?,?,?,?,?,?,?)');
       for (const q of questions) {
-        if (!q.question_text || !q.question_text.trim()) continue;
+        if (!q.question_text) continue;
         stmt.run(moduleId, q.question_text, q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.correct_option || 'A');
       }
       stmt.finalize();
@@ -703,14 +690,12 @@ app.get('/api/public/certificate', async (req, res) => {
   }
 });
 
-// Guardar módulos: AHORA con reinicio de IDs para mantener consistencia
 app.post('/api/admin/modules', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const { modules } = req.body;
 
     if (dbType === 'postgres') {
-      // Borrar todo y reiniciar secuencias para que IDs sean 1,2,3...
       await pool.query('DELETE FROM modules');
       await pool.query('ALTER SEQUENCE IF EXISTS modules_id_seq RESTART WITH 1');
       await pool.query('ALTER SEQUENCE IF EXISTS questions_id_seq RESTART WITH 1');
@@ -723,7 +708,6 @@ app.post('/api/admin/modules', authMiddleware, async (req, res) => {
         );
       }
 
-      // Devolver módulos actualizados con IDs correctos
       const fresh = await pool.query('SELECT * FROM modules WHERE active = TRUE ORDER BY order_num');
       fresh.rows.forEach(m => { m.video_url = toYouTubeEmbed(m.video_url); });
       res.json({ success: true, modules: fresh.rows });
@@ -773,6 +757,6 @@ app.post('/api/admin/reset-password', authMiddleware, async (req, res) => {
 // ============================================
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log('🚀 Litoplas Academy v5.3.1 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
+    console.log('🚀 Litoplas Academy v5.3.2 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
   });
 });
