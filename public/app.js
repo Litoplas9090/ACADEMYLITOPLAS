@@ -1,6 +1,6 @@
 // ============================================
-// LITOPLAS ACADEMY - APP.JS v5.3
-// Curso secuencial obligatorio con cuestionario
+// LITOPLAS ACADEMY - APP.JS v5.3.1
+// Curso secuencial con cuestionario
 // ============================================
 
 const API_URL = window.location.origin;
@@ -10,7 +10,6 @@ let allModules = [];
 let userProgress = [];
 let currentModuleIndex = 0;
 
-// DOM refs
 const authSection = document.getElementById('auth-section');
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
@@ -21,11 +20,9 @@ const activeModule = document.getElementById('active-module');
 const quizSection = document.getElementById('quiz-section');
 const certificateSection = document.getElementById('certificate-section');
 
-// Tabs
 const tabLogin = document.getElementById('tab-login');
 const tabRegister = document.getElementById('tab-register');
 
-// Inputs
 const loginDocument = document.getElementById('login-document');
 const loginPassword = document.getElementById('login-password');
 const loginMsg = document.getElementById('login-msg');
@@ -36,30 +33,23 @@ const regPassword = document.getElementById('reg-password');
 const regPassword2 = document.getElementById('reg-password2');
 const registerMsg = document.getElementById('register-msg');
 
-// Botones
 const btnLogin = document.getElementById('btn-login');
 const btnRegister = document.getElementById('btn-register');
 const btnLogout = document.getElementById('btn-logout');
 const btnDownloadCert = document.getElementById('btn-download-cert');
 const btnBackCourse = document.getElementById('btn-back-course');
 
-// Progress
 const progressFill = document.getElementById('progress-fill');
 const progressText = document.getElementById('progress-text');
 const userName = document.getElementById('user-name');
 
-// Certificado
 const certName = document.getElementById('cert-name');
 const certDocument = document.getElementById('cert-document');
 const certExpiry = document.getElementById('cert-expiry');
 const certDate = document.getElementById('cert-date');
 
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[APP] Iniciando Litoplas Academy v5.3');
+  console.log('[APP] Iniciando Litoplas Academy v5.3.1');
 
   tabLogin.addEventListener('click', showLogin);
   tabRegister.addEventListener('click', showRegister);
@@ -77,10 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCourseData();
   }
 });
-
-// ============================================
-// NAVEGACIÓN
-// ============================================
 
 function showLogin() {
   tabLogin.classList.add('active');
@@ -110,10 +96,6 @@ function showCourse() {
   courseView.classList.remove('hidden');
   loadCourseData();
 }
-
-// ============================================
-// LOGIN / REGISTRO / LOGOUT
-// ============================================
 
 async function doLogin() {
   const documento = loginDocument.value.trim();
@@ -238,10 +220,6 @@ function updateUserBar(user) {
   progressText.textContent = pct + '%';
 }
 
-// ============================================
-// CARGAR CURSO SECUENCIAL
-// ============================================
-
 async function loadCourseData() {
   if (!currentToken) return;
   try {
@@ -268,10 +246,6 @@ function getLastCompletedIndex() {
   }
   return -1;
 }
-
-// ============================================
-// NAVEGACIÓN DE MÓDULOS
-// ============================================
 
 function renderModuleNav() {
   moduleNav.innerHTML = '';
@@ -318,11 +292,19 @@ function renderActiveModule() {
 
   if (mod.video_url) {
     html += '<div class="video-container">';
-    html += '<iframe src="' + escapeHtml(mod.video_url) + '" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>';
+    html += '<iframe src="' + escapeHtml(mod.video_url) + '" ';
+    html += 'frameborder="0" ';
+    html += 'allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" ';
+    html += 'referrerpolicy="strict-origin-when-cross-origin" ';
+    html += 'allowfullscreen ';
+    html += 'loading="lazy" ';
+    html += 'title="Video del módulo"></iframe>';
     html += '</div>';
+    html += '<p class="video-fallback" style="display:none;color:#666;text-align:center;margin-top:10px;">';
+    html += 'Si el video no carga, <a href="' + escapeHtml(mod.video_url.replace('youtube-nocookie.com/embed/', 'youtube.com/watch?v=')) + '" target="_blank">abrir en YouTube</a>';
+    html += '</p>';
   }
 
-  // Si ya está completado, mostrar mensaje y botón para siguiente
   if (completed) {
     html += '<div class="module-completed-msg">✓ Este módulo ya ha sido completado</div>';
     if (!isLast) {
@@ -331,7 +313,6 @@ function renderActiveModule() {
       html += '<button id="btn-view-cert" class="btn-primary">🏆 Ver Certificado</button>';
     }
   } else {
-    // No completado: mostrar cuestionario si hay preguntas, o botón continuar si no hay
     html += '<div class="module-action-area">';
     html += '<button id="btn-start-quiz" class="btn-primary">Responder Cuestionario para continuar</button>';
     html += '</div>';
@@ -340,7 +321,6 @@ function renderActiveModule() {
   card.innerHTML = html;
   activeModule.appendChild(card);
 
-  // Event listeners dinámicos
   const btnNext = document.getElementById('btn-next-module');
   if (btnNext) btnNext.addEventListener('click', function() {
     currentModuleIndex++;
@@ -357,10 +337,6 @@ function renderActiveModule() {
   });
 }
 
-// ============================================
-// CUESTIONARIO
-// ============================================
-
 async function loadQuiz(moduleId) {
   quizSection.innerHTML = '<p>Cargando cuestionario...</p>';
   quizSection.classList.remove('hidden');
@@ -370,7 +346,6 @@ async function loadQuiz(moduleId) {
     const questions = await res.json();
 
     if (!questions || questions.length === 0) {
-      // Sin preguntas: aprobar automáticamente
       await completeModule(moduleId);
       return;
     }
@@ -465,7 +440,6 @@ async function completeModule(moduleId) {
     const data = await res.json();
 
     if (data.success) {
-      // Recargar progreso
       const progRes = await fetch(API_URL + '/api/progress', { headers: { 'Authorization': 'Bearer ' + currentToken } });
       userProgress = await progRes.json();
       updateUserBar({ progress: data.progress });
@@ -482,10 +456,6 @@ async function completeModule(moduleId) {
     alert('Error al guardar progreso: ' + err.message);
   }
 }
-
-// ============================================
-// CERTIFICADO
-// ============================================
 
 async function showCertificateView(expiryDate) {
   courseView.classList.add('hidden');

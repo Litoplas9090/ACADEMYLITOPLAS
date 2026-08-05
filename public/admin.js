@@ -1,12 +1,11 @@
 // ============================================
-// LITOPLAS ACADEMY - ADMIN.JS v5.3
-// Con gestión completa de preguntas por módulo
+// LITOPLAS ACADEMY - ADMIN.JS v5.3.1
+// Fix: guardar preguntas con IDs consistentes
 // ============================================
 
 const API_URL = window.location.origin;
 let adminToken = localStorage.getItem('litoplas_admin_token');
 
-// DOM refs
 const adminLogin = document.getElementById('admin-login');
 const adminPanel = document.getElementById('admin-panel');
 const adminUser = document.getElementById('admin-user');
@@ -41,14 +40,10 @@ const btnDownloadCertAdmin = document.getElementById('btn-download-cert-admin');
 
 let currentCertUser = null;
 let adminModulesData = [];
-let adminQuestionsData = {}; // { moduleId: [questions] }
-
-// ============================================
-// EVENT LISTENERS
-// ============================================
+let adminQuestionsData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.3');
+  console.log('[ADMIN] Iniciando panel administrativo v5.3.1');
 
   btnAdminLogin.addEventListener('click', doAdminLogin);
   btnAdminLogout.addEventListener('click', doAdminLogout);
@@ -72,10 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUsers();
   }
 });
-
-// ============================================
-// LOGIN / LOGOUT
-// ============================================
 
 async function doAdminLogin() {
   const username = adminUser.value.trim();
@@ -129,10 +120,6 @@ function showAdminPanel() {
   adminPanel.classList.remove('hidden');
 }
 
-// ============================================
-// TABS
-// ============================================
-
 function showTab(tab) {
   [tabSearch, tabUsers, tabExpiring, tabContent].forEach(t => t.classList.remove('active'));
   [panelSearch, panelUsers, panelExpiring, panelContent].forEach(p => p.classList.add('hidden'));
@@ -142,10 +129,6 @@ function showTab(tab) {
   if (tab === 'expiring') { tabExpiring.classList.add('active'); panelExpiring.classList.remove('hidden'); loadExpiring(); }
   if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
 }
-
-// ============================================
-// BUSCAR USUARIO
-// ============================================
 
 async function searchUser() {
   const doc = searchDocument.value.trim();
@@ -167,10 +150,6 @@ async function searchUser() {
   }
 }
 
-// ============================================
-// LISTAR USUARIOS
-// ============================================
-
 async function loadUsers() {
   usersTableContainer.innerHTML = '<p>Cargando usuarios...</p>';
   try {
@@ -183,10 +162,6 @@ async function loadUsers() {
     usersTableContainer.innerHTML = '<p class="msg error">Error cargando usuarios</p>';
   }
 }
-
-// ============================================
-// PRÓXIMOS A VENCER
-// ============================================
 
 async function loadExpiring() {
   expiringTableContainer.innerHTML = '<p>Cargando...</p>';
@@ -214,10 +189,6 @@ async function loadExpiring() {
     expiringTableContainer.innerHTML = '<p class="msg error">Error cargando datos</p>';
   }
 }
-
-// ============================================
-// RENDER HELPERS
-// ============================================
 
 function renderUserTable(users, container, showExpiryOnly) {
   if (!users || users.length === 0) {
@@ -294,10 +265,6 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// ============================================
-// CERTIFICADO ADMIN (MODAL)
-// ============================================
-
 function openCertificateModal(userId, userName, userDoc, expiry) {
   currentCertUser = { userId, userName, userDoc, expiry };
   const expiryDate = expiry ? new Date(expiry) : new Date();
@@ -370,13 +337,9 @@ async function resetPassword(userId) {
 async function loadModulesAdmin() {
   modulesAdminContainer.innerHTML = '<p>Cargando módulos...</p>';
   try {
-    const [modRes, allQuestions] = await Promise.all([
-      fetch(API_URL + '/api/modules'),
-      fetch(API_URL + '/api/admin/modules/0/questions', { headers: { 'Authorization': 'Bearer ' + adminToken } }).catch(() => ({ json: () => [] }))
-    ]);
+    const modRes = await fetch(API_URL + '/api/modules');
     adminModulesData = await modRes.json();
 
-    // Cargar preguntas de cada módulo
     adminQuestionsData = {};
     for (const mod of adminModulesData) {
       try {
@@ -414,7 +377,6 @@ function renderModulesAdmin() {
     html += '<label>Activo</label>';
     html += '<select class="mod-active"><option value="1" ' + (mod.active !== false ? 'selected' : '') + '>Sí</option><option value="0" ' + (mod.active === false ? 'selected' : '') + '>No</option></select>';
 
-    // Sección de preguntas
     html += '<div class="questions-section">';
     html += '<h5>📝 Preguntas del Módulo</h5>';
     html += '<div class="questions-list" data-module-id="' + mod.id + '">';
@@ -434,7 +396,6 @@ function renderModulesAdmin() {
   html += '</div>';
   modulesAdminContainer.innerHTML = html;
 
-  // Event listeners
   document.querySelectorAll('.btn-add-question').forEach(btn => {
     btn.addEventListener('click', function() {
       const modId = parseInt(this.getAttribute('data-module-id'));
@@ -488,7 +449,6 @@ function addQuestionEditor(moduleId) {
   tempDiv.innerHTML = renderQuestionEditor(moduleId, currentCount, {});
   list.appendChild(tempDiv.firstElementChild);
 
-  // Re-asignar listeners
   list.querySelectorAll('.btn-remove-question').forEach(btn => {
     btn.removeEventListener('click', handleRemoveQuestion);
     btn.addEventListener('click', handleRemoveQuestion);
@@ -507,7 +467,6 @@ function removeQuestionEditor(moduleId, qidx) {
   const editors = list.querySelectorAll('.question-editor');
   if (editors[qidx]) editors[qidx].remove();
 
-  // Reindexar
   const remaining = list.querySelectorAll('.question-editor');
   if (remaining.length === 0) {
     list.innerHTML = '<p class="no-questions">No hay preguntas. El módulo se aprobará automáticamente.</p>';
@@ -522,7 +481,9 @@ function removeQuestionEditor(moduleId, qidx) {
 }
 
 async function saveModules() {
-  // Recolectar módulos
+  btnSaveModules.textContent = 'Guardando...';
+  btnSaveModules.disabled = true;
+
   const items = modulesAdminContainer.querySelectorAll('.module-admin-item');
   const modules = [];
   items.forEach(item => {
@@ -537,20 +498,25 @@ async function saveModules() {
   });
 
   try {
-    // Guardar módulos primero
+    // Guardar módulos - el backend reinicia IDs y devuelve los módulos con IDs correctos
     const modRes = await fetch(API_URL + '/api/admin/modules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
       body: JSON.stringify({ modules })
     });
     const modData = await modRes.json();
-    if (!modData.success) { alert('Error guardando módulos: ' + (modData.error || '')); return; }
 
-    // Recargar IDs de módulos para guardar preguntas
-    const freshRes = await fetch(API_URL + '/api/modules');
-    const freshModules = await freshRes.json();
+    if (!modData.success) {
+      alert('Error guardando módulos: ' + (modData.error || ''));
+      btnSaveModules.textContent = 'Guardar Cambios de Módulos';
+      btnSaveModules.disabled = false;
+      return;
+    }
 
-    // Guardar preguntas para cada módulo
+    // Usar los módulos devueltos por el backend (con IDs correctos 1,2,3...)
+    const freshModules = modData.modules || [];
+
+    // Guardar preguntas para cada módulo usando los IDs correctos
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       const modId = freshModules[i].id;
@@ -569,16 +535,23 @@ async function saveModules() {
         });
       });
 
-      await fetch(API_URL + '/api/admin/modules/' + modId + '/questions', {
+      const qRes = await fetch(API_URL + '/api/admin/modules/' + modId + '/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + adminToken },
         body: JSON.stringify({ questions })
       });
+      const qData = await qRes.json();
+      if (!qData.success) {
+        console.error('Error guardando preguntas para módulo ' + modId + ':', qData.error);
+      }
     }
 
     alert('Módulos y preguntas guardados correctamente');
     loadModulesAdmin();
   } catch (err) {
     alert('Error de conexión al guardar: ' + err.message);
+  } finally {
+    btnSaveModules.textContent = 'Guardar Cambios de Módulos';
+    btnSaveModules.disabled = false;
   }
 }

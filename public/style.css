@@ -1,5 +1,5 @@
 /* ============================================
-   LITOPLAS ACADEMY - STYLE.CSS v5.3
+   LITOPLAS ACADEMY - STYLE.CSS v5.3.1
    ============================================ */
 
 :root {
@@ -308,6 +308,16 @@ body {
   top: 0; left: 0;
   width: 100%; height: 100%;
   border: none;
+}
+
+.video-fallback {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.video-fallback a {
+  color: var(--color-primary);
+  text-decoration: underline;
 }
 
 .module-completed-msg {
