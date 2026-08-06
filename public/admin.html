@@ -26,55 +26,64 @@
       </div>
     </div>
 
-    <!-- PANEL ADMIN -->
+    <!-- PANEL ADMIN UNIFICADO -->
     <div id="admin-panel" class="admin-panel hidden">
       <div class="admin-bar">
         <span>Panel Administrativo</span>
         <button id="btn-admin-logout" class="btn-secondary">Cerrar Sesión</button>
       </div>
 
-      <div class="admin-tabs">
-        <button id="tab-search" class="admin-tab active">Buscar por Documento</button>
-        <button id="tab-users" class="admin-tab">Usuarios</button>
-        <button id="tab-expiring" class="admin-tab">Próximos a Vencer</button>
-        <button id="tab-stats" class="admin-tab">Estadísticas</button>
-        <button id="tab-content" class="admin-tab">Contenido del Curso</button>
-      </div>
-
-      <!-- BUSCAR POR DOCUMENTO -->
-      <div id="panel-search" class="admin-panel-content">
-        <h3>Buscar Usuario por Documento</h3>
-        <div class="search-row">
-          <input type="text" id="search-document" placeholder="Número de Documento">
-          <button id="btn-search" class="btn-primary">Buscar</button>
+      <div class="admin-unified">
+        <!-- SECCIÓN 1: BUSCAR POR DOCUMENTO -->
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <span class="section-icon">🔍</span>
+            <h3>Buscar Usuario por Documento</h3>
+          </div>
+          <div class="search-row">
+            <input type="text" id="search-document" placeholder="Número de Documento">
+            <button id="btn-search" class="btn-primary">Buscar</button>
+          </div>
+          <div id="search-results"></div>
         </div>
-        <div id="search-results"></div>
-      </div>
 
-      <!-- USUARIOS -->
-      <div id="panel-users" class="admin-panel-content hidden">
-        <h3>Listado de Usuarios</h3>
-        <div id="users-table-container"></div>
-      </div>
+        <!-- SECCIÓN 2: LISTA DE USUARIOS -->
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <span class="section-icon">👥</span>
+            <h3>Listado de Usuarios</h3>
+          </div>
+          <div id="users-table-container"></div>
+        </div>
 
-      <!-- PRÓXIMOS A VENCER -->
-      <div id="panel-expiring" class="admin-panel-content hidden">
-        <h3>Certificados Próximos a Vencer</h3>
-        <div id="expiring-table-container"></div>
-      </div>
+        <!-- SECCIÓN 3: PRÓXIMOS A VENCER -->
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <span class="section-icon">⏰</span>
+            <h3>Certificados Próximos a Vencer</h3>
+          </div>
+          <div id="expiring-table-container"></div>
+        </div>
 
-      <!-- ESTADÍSTICAS -->
-      <div id="panel-stats" class="admin-panel-content hidden">
-        <h3>Estadísticas de la Plataforma</h3>
-        <div id="stats-container"></div>
-      </div>
+        <!-- SECCIÓN 4: ESTADÍSTICAS -->
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <span class="section-icon">📊</span>
+            <h3>Estadísticas de la Plataforma</h3>
+          </div>
+          <div id="stats-container"></div>
+        </div>
 
-      <!-- CONTENIDO DEL CURSO -->
-      <div id="panel-content" class="admin-panel-content hidden">
-        <h3>Gestión de Módulos y Preguntas</h3>
-        <p class="admin-hint">Edita cada módulo, agrega videos, documentos y preguntas. Puedes eliminar módulos o agregar nuevos.</p>
-        <div id="modules-admin-container"></div>
-        <button id="btn-save-modules" class="btn-primary">Guardar Cambios de Módulos</button>
+        <!-- SECCIÓN 5: CONTENIDO DEL CURSO (se mantiene aparte como botón) -->
+        <div class="admin-section">
+          <div class="admin-section-header">
+            <span class="section-icon">📚</span>
+            <h3>Gestión de Módulos y Preguntas</h3>
+          </div>
+          <p class="admin-hint">Edita cada módulo, agrega videos, documentos y preguntas. Puedes eliminar módulos o agregar nuevos.</p>
+          <div id="modules-admin-container"></div>
+          <button id="btn-save-modules" class="btn-primary">Guardar Cambios de Módulos</button>
+        </div>
       </div>
     </div>
   </div>

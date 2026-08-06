@@ -14,18 +14,6 @@ const adminMsg = document.getElementById('admin-msg');
 const btnAdminLogin = document.getElementById('btn-admin-login');
 const btnAdminLogout = document.getElementById('btn-admin-logout');
 
-const tabSearch = document.getElementById('tab-search');
-const tabUsers = document.getElementById('tab-users');
-const tabExpiring = document.getElementById('tab-expiring');
-const tabStats = document.getElementById('tab-stats');
-const tabContent = document.getElementById('tab-content');
-
-const panelSearch = document.getElementById('panel-search');
-const panelUsers = document.getElementById('panel-users');
-const panelExpiring = document.getElementById('panel-expiring');
-const panelStats = document.getElementById('panel-stats');
-const panelContent = document.getElementById('panel-content');
-
 const searchDocument = document.getElementById('search-document');
 const btnSearch = document.getElementById('btn-search');
 const searchResults = document.getElementById('search-results');
@@ -46,17 +34,11 @@ let adminModulesData = [];
 let adminQuestionsData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.4');
+  console.log('[ADMIN] Iniciando panel administrativo v5.5.3');
 
   btnAdminLogin.addEventListener('click', doAdminLogin);
   btnAdminLogout.addEventListener('click', doAdminLogout);
   adminPass.addEventListener('keypress', function(e) { if (e.key === 'Enter') doAdminLogin(); });
-
-  tabSearch.addEventListener('click', function() { showTab('search'); });
-  tabUsers.addEventListener('click', function() { showTab('users'); });
-  tabExpiring.addEventListener('click', function() { showTab('expiring'); });
-  tabStats.addEventListener('click', function() { showTab('stats'); });
-  tabContent.addEventListener('click', function() { showTab('content'); });
 
   btnSearch.addEventListener('click', searchUser);
   searchDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchUser(); });
@@ -68,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   if (adminToken) {
     showAdminPanel();
-    loadUsers();
+    loadAllAdminData();
   }
 });
 
@@ -96,7 +78,7 @@ async function doAdminLogin() {
       localStorage.setItem('litoplas_admin_token', adminToken);
       adminMsg.textContent = '¡Acceso concedido!';
       adminMsg.className = 'msg success';
-      setTimeout(() => { showAdminPanel(); loadUsers(); }, 800);
+      setTimeout(() => { showAdminPanel(); loadAllAdminData(); }, 800);
     } else {
       adminMsg.textContent = data.error || 'Credenciales incorrectas';
       adminMsg.className = 'msg error';
@@ -124,15 +106,11 @@ function showAdminPanel() {
   adminPanel.classList.remove('hidden');
 }
 
-function showTab(tab) {
-  [tabSearch, tabUsers, tabExpiring, tabStats, tabContent].forEach(t => t.classList.remove('active'));
-  [panelSearch, panelUsers, panelExpiring, panelStats, panelContent].forEach(p => p.classList.add('hidden'));
-
-  if (tab === 'search') { tabSearch.classList.add('active'); panelSearch.classList.remove('hidden'); }
-  if (tab === 'users') { tabUsers.classList.add('active'); panelUsers.classList.remove('hidden'); loadUsers(); }
-  if (tab === 'expiring') { tabExpiring.classList.add('active'); panelExpiring.classList.remove('hidden'); loadExpiring(); }
-  if (tab === 'stats') { tabStats.classList.add('active'); panelStats.classList.remove('hidden'); loadStats(); }
-  if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
+function loadAllAdminData() {
+  loadUsers();
+  loadExpiring();
+  loadStats();
+  loadModulesAdmin();
 }
 
 async function searchUser() {

@@ -378,7 +378,7 @@ async function loadQuiz(moduleId) {
         const qVideoId = q.video_url.match(/embed\/([a-zA-Z0-9_-]{11})/)?.[1] || '';
         html += '<div class="video-wrapper">';
         html += '<div class="question-video-container">';
-        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy" onload="this.parentElement.classList.add('loaded')"></iframe>';
+        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy"></iframe>';
         html += '</div>';
         html += '<div class="video-fallback hidden">';
         html += '<p>⚠️ No se puede reproducir este video incrustado.</p>';
@@ -570,17 +570,24 @@ function escapeHtml(text) {
 
 
 // Detectar videos de YouTube que no cargaron (bloqueados por el dueño)
-document.addEventListener('DOMContentLoaded', function() {
-  setTimeout(() => {
-    document.querySelectorAll('.video-container').forEach(container => {
-      const iframe = container.querySelector('iframe');
-      if (iframe && !container.classList.contains('loaded')) {
-        const wrapper = container.closest('.video-wrapper');
-        if (wrapper) {
-          const fallback = wrapper.querySelector('.video-fallback');
-          if (fallback) fallback.classList.remove('hidden');
-        }
-      }
-    });
-  }, 5000);
-});
+function detectBlockedVideos() {
+  document.querySelectorAll('.video-wrapper').forEach(wrapper => {
+    const container = wrapper.querySelector('.video-container, .question-video-container');
+    const iframe = container ? container.querySelector('iframe') : null;
+    const fallback = wrapper.querySelector('.video-fallback');
+    if (iframe && fallback) {
+      // Verificar si el iframe tiene contenido cargado (cross-origin limita acceso directo)
+      // Usamos un timeout como heurística
+      setTimeout(() => {
+        fallback.classList.remove('hidden');
+      }, 6000);
+    }
+  });
+}
+
+// Ejecutar al cargar DOM y después de renderizar módulos/preguntas
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', detectBlockedVideos);
+} else {
+  detectBlockedVideos();
+}

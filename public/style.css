@@ -1121,3 +1121,61 @@ body {
 .video-container.loaded {
   opacity: 1;
 }
+
+
+/* ============================================
+   ADMIN PANEL UNIFICADO v5.5.3
+   ============================================ */
+
+.admin-unified {
+  display: grid;
+  gap: 25px;
+}
+
+.admin-section {
+  background: var(--color-card);
+  border-radius: var(--radius);
+  padding: 25px;
+  box-shadow: var(--shadow);
+  border-left: 5px solid var(--color-primary);
+  animation: fadeIn 0.5s;
+}
+
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #f0f0f0;
+}
+
+.section-icon {
+  font-size: 1.4rem;
+}
+
+.admin-section-header h3 {
+  color: var(--color-secondary);
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+/* Alternar colores de borde para cada sección */
+.admin-section:nth-child(2) { border-left-color: var(--color-accent); }
+.admin-section:nth-child(3) { border-left-color: var(--color-warning); }
+.admin-section:nth-child(4) { border-left-color: var(--color-success); }
+.admin-section:nth-child(5) { border-left-color: var(--color-primary); }
+
+.admin-section:nth-child(2) .admin-section-header h3 { color: var(--color-accent); }
+.admin-section:nth-child(3) .admin-section-header h3 { color: #b8860b; }
+.admin-section:nth-child(4) .admin-section-header h3 { color: var(--color-success); }
+
+/* Responsive admin unificado */
+@media (max-width: 768px) {
+  .admin-section {
+    padding: 18px;
+  }
+  .admin-section-header h3 {
+    font-size: 1.05rem;
+  }
+}
