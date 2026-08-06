@@ -364,30 +364,28 @@ function downloadAdminCertificate() {
   const expiryText = expiry.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
   const dateText = 'Fecha de emisión: ' + now.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Contenedor exterior: dimensiones exactas A4 landscape, centrado con flexbox
-  // Contenedor interior: conserva idéntico diseño visual (borde, colores, logo, tipografías)
   const certHTML = `
     <div style="
-      width:297mm; 
-      height:210mm; 
-      background:#ffffff; 
-      box-sizing:border-box; 
+      width:297mm;
+      height:210mm;
+      background:#ffffff;
+      box-sizing:border-box;
       padding:6mm 10mm;
-      display:flex; 
-      flex-direction:column; 
-      align-items:center; 
-      justify-content:center; 
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
       overflow:hidden;
       position:relative;
     ">
       <div style="
-        width:100%; 
-        padding:18px 30px; 
-        box-sizing:border-box; 
-        border:3px solid #003366; 
-        border-radius:12px; 
+        width:100%;
+        padding:18px 30px;
+        box-sizing:border-box;
+        border:3px solid #003366;
+        border-radius:12px;
         background:#ffffff;
-        text-align:center; 
+        text-align:center;
         font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
       ">
         <div style="text-align:center; margin-bottom:12px;">
@@ -395,80 +393,80 @@ function downloadAdminCertificate() {
         </div>
         <div style="text-align:center; padding:6px 0;">
           <h2 style="
-            color:#c41e3a; 
-            font-size:1.6rem; 
-            margin:6px 0 6px 0; 
-            text-transform:uppercase; 
-            letter-spacing:3px; 
+            color:#c41e3a;
+            font-size:1.6rem;
+            margin:6px 0 6px 0;
+            text-transform:uppercase;
+            letter-spacing:3px;
             font-weight:700;
           ">CERTIFICADO</h2>
           <h3 style="
-            color:#003366; 
-            font-size:1rem; 
-            margin:0 0 20px 0; 
+            color:#003366;
+            font-size:1rem;
+            margin:0 0 20px 0;
             font-weight:500;
           ">Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
 
           <p style="
-            color:#666; 
-            font-size:0.75rem; 
-            text-transform:uppercase; 
-            letter-spacing:1.5px; 
+            color:#666;
+            font-size:0.75rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
             margin:14px 0 4px 0;
           ">Otorgado a</p>
           <p style="
-            font-size:1.4rem; 
-            font-weight:700; 
-            color:#003366; 
+            font-size:1.4rem;
+            font-weight:700;
+            color:#003366;
             margin:4px 0 6px 0;
           ">${escapeHtml(userName)}</p>
 
           <p style="
-            color:#666; 
-            font-size:0.75rem; 
-            text-transform:uppercase; 
-            letter-spacing:1.5px; 
+            color:#666;
+            font-size:0.75rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
             margin:14px 0 4px 0;
           ">Documento</p>
           <p style="
-            font-size:1.1rem; 
-            color:#333; 
-            font-weight:600; 
+            font-size:1.1rem;
+            color:#333;
+            font-weight:600;
             margin:4px 0 12px 0;
           ">${escapeHtml(doc)}</p>
 
           <p style="
-            color:#555; 
-            font-size:0.85rem; 
-            max-width:600px; 
-            margin:0 auto 12px auto; 
+            color:#555;
+            font-size:0.85rem;
+            max-width:600px;
+            margin:0 auto 12px auto;
             line-height:1.4;
           ">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
 
           <p style="
-            color:#666; 
-            font-size:0.75rem; 
-            text-transform:uppercase; 
-            letter-spacing:1.5px; 
+            color:#666;
+            font-size:0.75rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
             margin:14px 0 4px 0;
           ">Vigente hasta</p>
           <p style="
-            font-size:1.15rem; 
-            font-weight:700; 
-            color:#00a8b5; 
+            font-size:1.15rem;
+            font-weight:700;
+            color:#00a8b5;
             margin:4px 0 6px 0;
           ">${escapeHtml(expiryText)}</p>
 
           <p style="
-            color:#666; 
-            font-size:0.8rem; 
+            color:#666;
+            font-size:0.8rem;
             margin-top:8px;
           ">${escapeHtml(dateText)}</p>
         </div>
         <div style="margin-top:18px;">
           <div style="
-            height:8px; 
-            background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5); 
+            height:8px;
+            background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5);
             border-radius:4px;
           "></div>
         </div>
@@ -476,7 +474,6 @@ function downloadAdminCertificate() {
     </div>
   `;
 
-  // Crear contenedor temporal con posicionamiento absoluto para renderizado fiable de html2canvas
   const wrapper = document.createElement('div');
   wrapper.id = 'pdf-admin-cert-wrapper';
   wrapper.style.cssText = 'position:absolute; left:-9999px; top:0; z-index:-1; overflow:visible;';
@@ -489,7 +486,7 @@ function downloadAdminCertificate() {
     margin: [0, 0, 0, 0],
     filename: 'Certificado_Litoplas_' + doc + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { 
+    html2canvas: {
       scale: 2,
       useCORS: true,
       logging: false,
@@ -500,9 +497,9 @@ function downloadAdminCertificate() {
       x: 0,
       y: 0
     },
-    jsPDF: { 
-      unit: 'mm', 
-      format: [297, 210], 
+    jsPDF: {
+      unit: 'mm',
+      format: [297, 210],
       orientation: 'landscape'
     },
     pagebreak: {

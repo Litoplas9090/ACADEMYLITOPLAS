@@ -12,36 +12,31 @@
     <header class="header">
       <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
       <h1>Litoplas Academy</h1>
-      <p data-i18n="subtitle">Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
-      <div class="lang-selector">
-        <button class="lang-btn active" data-lang="es" title="Español">ES</button>
-        <button class="lang-btn" data-lang="en" title="English">EN</button>
-        <button class="lang-btn" data-lang="pt" title="Português">PT</button>
-      </div>
+      <p>Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
     </header>
 
     <div id="auth-section" class="auth-section">
       <div class="auth-tabs">
-        <button id="tab-login" class="auth-tab active" data-i18n="tab_login">Iniciar Sesión</button>
-        <button id="tab-register" class="auth-tab" data-i18n="tab_register">Registrarse</button>
+        <button id="tab-login" class="auth-tab active">Iniciar Sesión</button>
+        <button id="tab-register" class="auth-tab">Registrarse</button>
       </div>
 
       <div id="login-form" class="auth-form">
-        <h2 data-i18n="login_title">Iniciar Sesión</h2>
+        <h2>Iniciar Sesión</h2>
         <input type="text" id="login-document" placeholder="Número de Documento" required>
         <input type="password" id="login-password" placeholder="Contraseña" required>
-        <button id="btn-login" class="btn-primary" data-i18n="btn_login">Ingresar</button>
+        <button id="btn-login" class="btn-primary">Ingresar</button>
         <p id="login-msg" class="msg"></p>
       </div>
 
       <div id="register-form" class="auth-form hidden">
-        <h2 data-i18n="register_title">Registro de Nuevo Usuario</h2>
+        <h2>Registro de Nuevo Usuario</h2>
         <input type="text" id="reg-fullname" placeholder="Nombre Completo *" required>
         <input type="text" id="reg-document" placeholder="Número de Documento *" required>
         <input type="text" id="reg-company" placeholder="Empresa / Contratista">
         <input type="password" id="reg-password" placeholder="Contraseña *" required>
         <input type="password" id="reg-password2" placeholder="Confirmar Contraseña *" required>
-        <button id="btn-register" class="btn-primary" data-i18n="btn_register">Crear Cuenta</button>
+        <button id="btn-register" class="btn-primary">Crear Cuenta</button>
         <p id="register-msg" class="msg"></p>
       </div>
     </div>
@@ -53,7 +48,7 @@
           <div id="progress-fill" class="progress-fill"></div>
         </div>
         <span id="progress-text">0%</span>
-        <button id="btn-logout" class="btn-secondary" data-i18n="btn_logout">Cerrar Sesión</button>
+        <button id="btn-logout" class="btn-secondary">Cerrar Sesión</button>
       </div>
 
       <div id="course-view" class="course-view">
