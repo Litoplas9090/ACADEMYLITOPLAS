@@ -365,8 +365,8 @@ app.post('/api/register', async (req, res) => {
       return res.status(400).json({ error: 'Nombre, documento y contraseña son obligatorios' });
     }
     // Validación de documento: solo números, 6-12 dígitos
-    if (!/^\d{6,12}$/.test(document)) {
-      return res.status(400).json({ error: 'El documento debe ser numérico y tener entre 6 y 12 dígitos' });
+    if (!/^[a-zA-Z0-9-]{5,20}$/i.test(document)) {
+      return res.status(400).json({ error: 'El documento debe ser alfanumérico y tener entre 5 y 20 caracteres' });
     }
     const hash = await bcrypt.hash(password, 10);
 
@@ -606,11 +606,11 @@ app.get('/api/modules/:id/questions', async (req, res) => {
     const moduleId = req.params.id;
     if (dbType === 'postgres') {
       const result = await pool.query('SELECT id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options FROM questions WHERE module_id = $1 ORDER BY order_num, id', [moduleId]);
-      res.json(result.rows);
+      res.json(result.rows.map(q => ({...q, video_url: toYouTubeEmbed(q.video_url)})));
     } else {
       db.all('SELECT id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options FROM questions WHERE module_id = ? ORDER BY order_num, id', [moduleId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        res.json(rows.map(q => ({...q, video_url: toYouTubeEmbed(q.video_url)})));
       });
     }
   } catch (err) {
@@ -676,11 +676,11 @@ app.get('/api/admin/modules/:id/questions', authMiddleware, async (req, res) => 
     const moduleId = req.params.id;
     if (dbType === 'postgres') {
       const result = await pool.query('SELECT * FROM questions WHERE module_id = $1 ORDER BY order_num, id', [moduleId]);
-      res.json(result.rows);
+      res.json(result.rows.map(q => ({...q, video_url: toYouTubeEmbed(q.video_url)})));
     } else {
       db.all('SELECT * FROM questions WHERE module_id = ? ORDER BY order_num, id', [moduleId], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+        res.json(rows.map(q => ({...q, video_url: toYouTubeEmbed(q.video_url)})));
       });
     }
   } catch (err) {
@@ -704,7 +704,7 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
         if (!q.question_text) continue;
         await pool.query(
           'INSERT INTO questions (module_id, question_text, video_url, document_url, option_a, option_b, option_c, option_d, num_options, allow_multiple, correct_options, order_num) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
-          [moduleId, q.question_text, q.video_url || '', q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple || false, q.correct_options || 'A', i + 1]
+          [moduleId, q.question_text, toYouTubeEmbed(q.video_url || ''), q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple || false, q.correct_options || 'A', i + 1]
         );
       }
     } else {
@@ -719,7 +719,7 @@ app.post('/api/admin/modules/:id/questions', authMiddleware, async (req, res) =>
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         if (!q.question_text) continue;
-        stmt.run(moduleId, q.question_text, q.video_url || '', q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple ? 1 : 0, q.correct_options || 'A', i + 1);
+        stmt.run(moduleId, q.question_text, toYouTubeEmbed(q.video_url || ''), q.document_url || '', q.option_a || '', q.option_b || '', q.option_c || '', q.option_d || '', q.num_options || 4, q.allow_multiple ? 1 : 0, q.correct_options || 'A', i + 1);
       }
       stmt.finalize();
     }

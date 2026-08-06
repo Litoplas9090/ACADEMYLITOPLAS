@@ -152,8 +152,8 @@ async function doRegister() {
     registerMsg.className = 'msg error';
     return;
   }
-  if (!/^\d{6,12}$/.test(documento)) {
-    registerMsg.textContent = 'El documento debe ser numérico y tener entre 6 y 12 dígitos';
+  if (!/^[a-zA-Z0-9-]{5,20}$/i.test(documento)) {
+    registerMsg.textContent = 'El documento debe ser alfanumérico y tener entre 5 y 20 caracteres';
     registerMsg.className = 'msg error';
     return;
   }
@@ -373,10 +373,20 @@ async function loadQuiz(moduleId) {
       html += '<div class="quiz-question" data-qid="' + q.id + '">';
       html += '<p class="q-text"><strong>' + (idx + 1) + '.</strong> ' + escapeHtml(q.question_text) + '</p>';
 
-      // Video de la pregunta
+      // Video de la pregunta con fallback
       if (q.video_url) {
+        const qVideoId = q.video_url.match(/embed\/([a-zA-Z0-9_-]{11})/)?.[1] || '';
+        html += '<div class="video-wrapper">';
         html += '<div class="question-video-container">';
-        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy"></iframe>';
+        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy" onload="this.parentElement.classList.add('loaded')"></iframe>';
+        html += '</div>';
+        html += '<div class="video-fallback hidden">';
+        html += '<p>⚠️ No se puede reproducir este video incrustado.</p>';
+        if (qVideoId) {
+          html += '<a href="https://www.youtube.com/watch?v=' + qVideoId + '" target="_blank" class="btn-doc">▶️ Ver en YouTube</a>';
+        }
+        html += '<p class="q-hint">Si el video no carga, el dueño puede haber desactivado la reproducción incrustada.</p>';
+        html += '</div>';
         html += '</div>';
       }
 
