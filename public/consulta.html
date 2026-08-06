@@ -3,56 +3,73 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Consulta de Certificado - Litoplas Academy</title>
+  <title>Litoplas Academy - Consulta de Certificado</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="auth-container">
-    <div class="auth-card" style="max-width: 500px;">
-      <div class="logo-container">
-        <img src="images/logo-litoplas.png" alt="Litoplas" class="logo-img" onerror="this.style.display='none'">
-        <div class="logo-fallback">LITOPLAS</div>
+  <div class="container">
+    <header class="header">
+      <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
+      <h1>Consulta de Certificado</h1>
+      <p>Verifique la validez de su certificación de seguridad industrial</p>
+    </header>
+
+    <div class="auth-section">
+      <div class="auth-form">
+        <h2>Verificar Certificado</h2>
+        <input type="text" id="query-document" placeholder="Número de Documento">
+        <button id="btn-query" class="btn-primary">Consultar</button>
+        <p id="query-msg" class="msg"></p>
+        <div id="query-result"></div>
       </div>
-      <h2>Consulta de Certificado</h2>
-      <p style="text-align:center; color:#6c757d; margin-bottom:20px;">Ingrese el número de documento para verificar la vigencia del certificado.</p>
-      <input type="text" id="query-document" placeholder="Número de documento">
-      <button id="btn-query">Consultar</button>
-      <div id="query-result" style="margin-top:20px;"></div>
-      <p style="text-align:center; margin-top:20px;">
-        <a href="/" style="color:#0056A4; font-weight:600;">← Volver al curso</a>
-      </p>
     </div>
   </div>
 
   <script>
-    const API = window.location.origin;
-    document.getElementById('btn-query').addEventListener('click', async () => {
-      const doc = document.getElementById('query-document').value.trim().toUpperCase();
-      const resDiv = document.getElementById('query-result');
-      if (!doc) { resDiv.innerHTML = '<p class="msg-error">Ingrese un documento</p>'; return; }
+    const API_URL = window.location.origin;
+    const queryDocument = document.getElementById('query-document');
+    const btnQuery = document.getElementById('btn-query');
+    const queryMsg = document.getElementById('query-msg');
+    const queryResult = document.getElementById('query-result');
+
+    btnQuery.addEventListener('click', async function() {
+      const doc = queryDocument.value.trim();
+      if (!doc) { queryMsg.textContent = 'Ingresa un número de documento'; queryMsg.className = 'msg error'; return; }
+      queryMsg.textContent = 'Consultando...';
+      queryMsg.className = 'msg';
+      queryResult.innerHTML = '';
       try {
-        const res = await fetch(`${API}/api/public/certificate/${doc}`);
+        const res = await fetch(API_URL + '/api/public/certificate?document=' + encodeURIComponent(doc));
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'No encontrado');
-        const expiry = new Date(data.certificate_expiry);
-        const now = new Date();
-        const isValid = expiry > now;
-        resDiv.innerHTML = `
-          <div style="padding:20px; border-radius:12px; background:${isValid ? '#e8f5e9' : '#ffebee'}; border:2px solid ${isValid ? '#4CAF50' : '#E53935'};">
-            <h3 style="color:${isValid ? '#2e7d32' : '#c62828'}; margin-bottom:12px;">${isValid ? '✅ CERTIFICADO VIGENTE' : '❌ CERTIFICADO VENCIDO'}</h3>
-            <p><strong>Nombre:</strong> ${data.full_name}</p>
-            <p><strong>Documento:</strong> ${data.document}</p>
-            <p><strong>Empresa:</strong> ${data.company || 'N/A'}</p>
-            <p><strong>Fecha de emisión:</strong> ${new Date(data.certificate_date).toLocaleDateString('es-CO')}</p>
-            <p><strong>Vigente hasta:</strong> ${expiry.toLocaleDateString('es-CO')}</p>
-          </div>
-        `;
+        if (!data) {
+          queryMsg.textContent = 'No se encontró certificado para ese documento';
+          queryMsg.className = 'msg error';
+          return;
+        }
+        if (data.certificate_issued) {
+          const exp = data.certificate_expiry ? new Date(data.certificate_expiry) : null;
+          const now = new Date();
+          const isValid = exp && exp > now;
+          queryResult.innerHTML = `
+            <div class="cert-result ${isValid ? 'valid' : 'expired'}">
+              <h3>${isValid ? '✅ Certificado Válido' : '⚠️ Certificado Vencido'}</h3>
+              <p><strong>Nombre:</strong> ${data.full_name}</p>
+              <p><strong>Documento:</strong> ${data.document}</p>
+              <p><strong>Vigente hasta:</strong> ${exp ? exp.toLocaleDateString('es-CO') : 'No especificada'}</p>
+            </div>
+          `;
+          queryMsg.textContent = '';
+        } else {
+          queryMsg.textContent = 'El usuario existe pero no ha completado el curso';
+          queryMsg.className = 'msg error';
+        }
       } catch (err) {
-        resDiv.innerHTML = `<p class="msg-error">${err.message}</p>`;
+        queryMsg.textContent = 'Error de conexión';
+        queryMsg.className = 'msg error';
       }
     });
-    document.getElementById('query-document').addEventListener('keypress', (e) => { if (e.key === 'Enter') document.getElementById('btn-query').click(); });
+
+    queryDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') btnQuery.click(); });
   </script>
 </body>
 </html>
