@@ -1,4 +1,8 @@
-const express = require('express');
+const exp
+      db.run(`ALTER TABLE users ADD COLUMN data_accepted INTEGER DEFAULT 0`, (err) => {
+        if (err && !err.message.includes('duplicate column')) console.log('Nota:', err.message);
+      });
+ress = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -188,7 +192,9 @@ async function initDB() {
           certificate_expiry TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-      `);
+      `
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);
+);
       await pool.query(`
         CREATE TABLE IF NOT EXISTS modules (
           id SERIAL PRIMARY KEY,
@@ -364,7 +370,7 @@ function authMiddleware(req, res, next) {
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { full_name, document, email, company, password } = req.body;
+    const { full_name, document, email, company, password, data_accepted } = req.body;
     if (!full_name || !document || !password) {
       return res.status(400).json({ error: 'Nombre, documento y contraseña son obligatorios' });
     }
@@ -378,8 +384,8 @@ app.post('/api/register', async (req, res) => {
       const exists = await pool.query('SELECT id FROM users WHERE document = $1', [document]);
       if (exists.rows.length > 0) return res.status(400).json({ error: 'El documento ya está registrado' });
       const result = await pool.query(
-        'INSERT INTO users (full_name, document, email, company, password_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-        [full_name, document, email || '', company || '', hash]
+        'INSERT INTO users (full_name, document, email, company, password_hash, data_accepted) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+        [full_name, document, email || '', company || '', hash, data_accepted || false]
       );
       const token = jwt.sign({ userId: result.rows[0].id, document }, JWT_SECRET, { expiresIn: '24h' });
       res.json({ success: true, token, user: { id: result.rows[0].id, full_name, document } });
@@ -387,8 +393,8 @@ app.post('/api/register', async (req, res) => {
       db.get('SELECT id FROM users WHERE document = ?', [document], (err, row) => {
         if (row) return res.status(400).json({ error: 'El documento ya está registrado' });
         db.run(
-          'INSERT INTO users (full_name, document, email, company, password_hash) VALUES (?,?,?,?,?)',
-          [full_name, document, email || '', company || '', hash],
+          'INSERT INTO users (full_name, document, email, company, password_hash, data_accepted) VALUES (?,?,?,?,?,?)',
+          [full_name, document, email || '', company || '', hash, data_accepted || false],
           function(err) {
             if (err) return res.status(500).json({ error: err.message });
             const token = jwt.sign({ userId: this.lastID, document }, JWT_SECRET, { expiresIn: '24h' });
@@ -765,10 +771,10 @@ app.get('/api/admin/users', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC');
+      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, data_accepted, created_at FROM users ORDER BY created_at DESC');
       res.json(result.rows);
     } else {
-      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
+      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, data_accepted, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
@@ -802,10 +808,10 @@ app.get('/api/admin/users/search', authMiddleware, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const { document } = req.query;
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = $1', [document]);
+      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, data_accepted, created_at FROM users WHERE document = $1', [document]);
       res.json(result.rows);
     } else {
-      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = ?', [document], (err, rows) => {
+      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, data_accepted, created_at FROM users WHERE document = ?', [document], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
