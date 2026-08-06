@@ -1,6 +1,7 @@
 // ============================================
 // LITOPLAS ACADEMY - APP.JS v5.5.10
 // Sin traducciones - Solo Español
+// Con aceptación de tratamiento de datos personales (Ley 1581/2012)
 // ============================================
 
 const API_URL = window.location.origin;
@@ -62,6 +63,7 @@ const regDocument = document.getElementById('reg-document');
 const regCompany = document.getElementById('reg-company');
 const regPassword = document.getElementById('reg-password');
 const regPassword2 = document.getElementById('reg-password2');
+const regDataConsent = document.getElementById('reg-data-consent');
 const registerMsg = document.getElementById('register-msg');
 
 const btnLogin = document.getElementById('btn-login');
@@ -177,6 +179,7 @@ async function doRegister() {
   const company = regCompany.value.trim();
   const password = regPassword.value;
   const password2 = regPassword2.value;
+  const dataConsent = regDataConsent ? regDataConsent.checked : false;
 
   if (!fullname || !documento || !password) {
     registerMsg.textContent = 'Nombre, documento y contraseña son obligatorios';
@@ -198,6 +201,20 @@ async function doRegister() {
     registerMsg.className = 'msg error';
     return;
   }
+  // VALIDACIÓN OBLIGATORIA: Aceptación de tratamiento de datos
+  if (!dataConsent) {
+    registerMsg.textContent = 'Debes aceptar la Política de Privacidad y Tratamiento de Datos Personales para continuar. Lee el documento y marca la casilla de autorización.';
+    registerMsg.className = 'msg error';
+    // Hacer scroll al checkbox para que el usuario lo vea
+    if (regDataConsent) {
+      regDataConsent.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      regDataConsent.parentElement.classList.add('consent-highlight');
+      setTimeout(() => {
+        if (regDataConsent.parentElement) regDataConsent.parentElement.classList.remove('consent-highlight');
+      }, 3000);
+    }
+    return;
+  }
 
   btnRegister.textContent = "Registrando...";
   btnRegister.disabled = true;
@@ -207,7 +224,14 @@ async function doRegister() {
     const res = await fetch(API_URL + '/api/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ full_name: fullname, document: documento, email: '', company: company, password: password })
+      body: JSON.stringify({ 
+        full_name: fullname, 
+        document: documento, 
+        email: '', 
+        company: company, 
+        password: password,
+        data_accepted: true
+      })
     });
     const data = await res.json();
     if (data.success) {
@@ -266,7 +290,6 @@ async function loadCourseData() {
     allModules = await modRes.json();
     userProgress = await progRes.json();
 
-    // Forzar secuencialidad: siempre empezar en el primer módulo no completado
     const lastCompleted = getLastCompletedIndex();
     currentModuleIndex = lastCompleted + 1;
     if (currentModuleIndex >= allModules.length) currentModuleIndex = allModules.length - 1;
@@ -333,7 +356,6 @@ function renderActiveModule() {
   html += '</div>';
   html += '<p class="module-active-desc">' + escapeHtml(mod.description || '') + '</p>';
 
-  // Múltiples videos
   if (mod.videos && mod.videos.length > 0) {
     mod.videos.forEach((vid, vidx) => {
       if (vid.video_url) {
@@ -350,7 +372,6 @@ function renderActiveModule() {
     });
   }
 
-  // Documento del módulo
   if (mod.document_url) {
     html += '<div class="module-document">';
     html += '<a href="' + escapeHtml(mod.document_url) + '" target="_blank" class="btn-doc">📄 Descargar documento del módulo</a>';
@@ -411,7 +432,6 @@ async function loadQuiz(moduleId) {
       html += '<div class="quiz-question" data-qid="' + q.id + '">';
       html += '<p class="q-text"><strong>' + (idx + 1) + '.</strong> ' + escapeHtml(q.question_text) + '</p>';
 
-      // Video de la pregunta con fallback
       let qVideoUrl = q.video_url || '';
       if (qVideoUrl && !isValidYouTubeEmbed(qVideoUrl)) {
         qVideoUrl = toYouTubeEmbedClient(qVideoUrl);
@@ -432,7 +452,6 @@ async function loadQuiz(moduleId) {
         html += '</div>';
       }
 
-      // Documento de la pregunta
       if (q.document_url) {
         html += '<div class="question-doc">';
         html += '<a href="' + escapeHtml(q.document_url) + '" target="_blank" class="btn-doc-small">📄 Ver documento</a>';

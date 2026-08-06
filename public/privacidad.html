@@ -3,117 +3,169 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Privacidad - Litoplas Academy</title>
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Litoplas Academy - Política de Privacidad y Tratamiento de Datos</title>
+  <link rel="stylesheet" href="style.css">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Montserrat', sans-serif; background: #f5f7fa; color: #333; line-height: 1.7; }
-    .privacy-container { max-width: 900px; margin: 40px auto; padding: 40px; background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-    .privacy-header { text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 3px solid #1A237E; }
-    .privacy-header img { max-height: 70px; margin-bottom: 12px; }
-    .privacy-header h1 { color: #1A237E; font-size: 26px; font-weight: 700; }
-    .privacy-header .subtitle { color: #6c757d; font-size: 14px; margin-top: 8px; }
-    .privacy-container h2 { color: #1A237E; margin-top: 32px; margin-bottom: 14px; font-size: 20px; font-weight: 700; border-left: 4px solid #1A237E; padding-left: 12px; }
-    .privacy-container h3 { color: #0D1642; margin-top: 24px; margin-bottom: 10px; font-size: 16px; font-weight: 600; }
-    .privacy-container p, .privacy-container li { color: #444; line-height: 1.8; font-size: 14px; margin-bottom: 10px; }
-    .privacy-container ul { margin-left: 28px; margin-bottom: 16px; }
-    .privacy-container ol { margin-left: 28px; margin-bottom: 16px; }
-    .highlight-box { background: #f0f4ff; border-left: 4px solid #1A237E; padding: 16px 20px; border-radius: 8px; margin: 20px 0; }
-    .highlight-box strong { color: #1A237E; }
-    .info-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
-    .info-table td, .info-table th { border: 1px solid #e0e0e0; padding: 10px 14px; text-align: left; }
-    .info-table th { background: #f0f4ff; color: #1A237E; font-weight: 600; width: 40%; }
-    .back-link { display: inline-block; margin-top: 32px; padding: 12px 24px; background: #1A237E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; }
-    .back-link:hover { background: #0D1642; }
-    .footer-privacy { text-align: center; margin-top: 40px; padding-top: 24px; border-top: 1px solid #e0e0e0; color: #6c757d; font-size: 13px; }
-    @media (max-width: 768px) { .privacy-container { margin: 0; border-radius: 0; padding: 24px; } }
+    .privacy-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--color-card);
+      padding: 40px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+    .privacy-container h1 {
+      color: var(--color-secondary);
+      text-align: center;
+      margin-bottom: 10px;
+    }
+    .privacy-container h2 {
+      color: var(--color-primary);
+      margin-top: 30px;
+      margin-bottom: 12px;
+      font-size: 1.2rem;
+    }
+    .privacy-container h3 {
+      color: var(--color-secondary);
+      margin-top: 20px;
+      margin-bottom: 10px;
+      font-size: 1.05rem;
+    }
+    .privacy-container p, .privacy-container li {
+      color: var(--color-text);
+      line-height: 1.7;
+      margin-bottom: 10px;
+      text-align: justify;
+    }
+    .privacy-container ul {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    .privacy-header {
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-primary) 100%);
+      color: white;
+      border-radius: var(--radius);
+      margin-bottom: 30px;
+    }
+    .privacy-header img {
+      max-height: 50px;
+      margin-bottom: 10px;
+      filter: brightness(0) invert(1);
+    }
+    .privacy-footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 2px solid #eee;
+      text-align: center;
+      color: var(--color-text-light);
+      font-size: 0.9rem;
+    }
+    .privacy-box {
+      background: #f8f9fa;
+      border-left: 4px solid var(--color-primary);
+      padding: 15px 20px;
+      margin: 15px 0;
+      border-radius: var(--radius);
+    }
+    .privacy-box strong {
+      color: var(--color-secondary);
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 20px;
+      padding: 10px 25px;
+      background: var(--color-secondary);
+      color: white;
+      text-decoration: none;
+      border-radius: var(--radius);
+      font-weight: 600;
+    }
+    .back-link:hover {
+      background: var(--color-primary);
+    }
   </style>
 </head>
 <body>
-  <div class="privacy-container">
-    <div class="privacy-header">
-      <img src="images/logo-litoplas.png" alt="Litoplas" onerror="this.style.display='none'; this.nextElementSibling.style.display='block'">
-      <div style="font-size:24px; font-weight:700; color:#1A237E; letter-spacing:2px; display:none;">LITOPLAS S.A.</div>
-      <h1>POLÍTICA DE PROTECCIÓN DE DATOS PERSONALES</h1>
-      <p class="subtitle">Litoplas Academy – Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
-    </div>
+  <div class="container">
+    <div class="privacy-container">
+      <div class="privacy-header">
+        <img src="images/logo-litoplas.png" alt="Litoplas" onerror="this.style.display='none'">
+        <h1>Política de Privacidad y Tratamiento de Datos Personales</h1>
+        <p>LITOPLAS S.A. - NIT 802.009.663-3</p>
+      </div>
 
-    <div class="highlight-box">
-      <strong>Responsable del Tratamiento:</strong> LITOPLAS S.A., sociedad dedicada a la fabricación de empaques flexibles.<br>
-      <strong>NIT:</strong> 802.009.663-3<br>
-      <strong>Dirección:</strong> Carrera 15 Sur #51B-999, Barranquilla, Colombia<br>
-      <strong>Teléfono:</strong> (605) 3851955<br>
-      <strong>Correo Oficial de Protección de Datos:</strong> integridad@litoplas.com<br>
-      <strong>Oficial de Protección de Datos:</strong> Área de Integridad y Cumplimiento
-    </div>
+      <div class="privacy-box">
+        <strong>Responsable del Tratamiento:</strong> LITOPLAS S.A., con NIT 802.009.663-3, domiciliada en Carrera 15 Sur #51B-999, Barranquilla, Colombia. Teléfono: (605) 3851955. Correo: integridad@litoplas.com
+      </div>
 
-    <h2>1. Generalidades</h2>
-    <p>En cumplimiento a lo dispuesto en la <strong>Ley 1581 de 2012</strong> y a su Decreto Reglamentario <strong>1377 de 2013</strong>, LITOPLAS S.A. ha implementado la presente Política de Tratamiento de Datos Personales, con el fin de respetar todos los derechos y garantías en cuanto a privacidad de los titulares sobre los que tratamos datos personales y cumplir cabalmente con los parámetros establecidos en las normas mencionadas.</p>
+      <h2>1. Marco Legal</h2>
+      <p>La presente política se rige por la <strong>Ley 1581 de 2012</strong> y el <strong>Decreto Reglamentario 1377 de 2013</strong>, normas que regulan la protección de datos personales en Colombia. LITOPLAS S.A. actúa como Responsable del Tratamiento de los datos personales recolectados a través de la plataforma Litoplas Academy.</p>
 
-    <h2>2. Objetivo</h2>
-    <p>Garantizar la autenticidad, confidencialidad e integridad de la información. La presente Política regula la recolección, almacenamiento, uso, circulación y supresión de datos personales de visitantes, contratistas, clientes activos y potenciales, trabajadores y proveedores registrados en cualquier base de datos de LITOPLAS S.A.</p>
+      <h2>2. Datos Personales que Recolectamos</h2>
+      <p>Al registrarse en Litoplas Academy, usted nos proporciona voluntariamente los siguientes datos personales:</p>
+      <ul>
+        <li><strong>Nombre completo</strong></li>
+        <li><strong>Número de documento de identidad</strong></li>
+        <li><strong>Empresa o contratista</strong> (opcional)</li>
+        <li><strong>Correo electrónico</strong> (opcional)</li>
+        <li><strong>Contraseña</strong> (almacenada de forma encriptada con bcrypt)</li>
+        <li><strong>Progreso del curso y resultados de evaluaciones</strong></li>
+        <li><strong>Fecha de registro y emisión de certificado</strong></li>
+      </ul>
 
-    <h2>3. Alcance</h2>
-    <p>Esta política aplica a todos los niveles de la compañía que deben ser cumplidos por los directivos, empleados, contratistas y terceros que laboren o tengan relación directa o indirecta con la organización, así mismo para toda la información con datos personales registradas en las bases de datos de LITOPLAS S.A.</p>
+      <h2>3. Finalidad del Tratamiento</h2>
+      <p>Los datos personales serán tratados para las siguientes finalidades:</p>
+      <ul>
+        <li><strong>Gestión de capacitación:</strong> Permitir el acceso al programa de inducción en seguridad industrial, registrar su progreso y emitir el certificado correspondiente.</li>
+        <li><strong>Cumplimiento legal:</strong> Cumplir con obligaciones legales, contables, fiscales y regulatorias en materia de seguridad industrial.</li>
+        <li><strong>Control de acceso:</strong> Verificar la identidad de visitantes y contratistas que ingresan a las instalaciones de LITOPLAS S.A.</li>
+        <li><strong>Seguridad:</strong> Preservar la seguridad de las personas, bienes e información de la empresa.</li>
+        <li><strong>Historial y trazabilidad:</strong> Mantener registros históricos de capacitaciones para fines de auditoría y cumplimiento normativo.</li>
+        <li><strong>Comunicaciones:</strong> Enviar notificaciones relacionadas con la vigencia del certificado, renovaciones o actualizaciones del programa.</li>
+      </ul>
 
-    <h2>4. Responsable del Tratamiento</h2>
-    <table class="info-table">
-      <tr><th>Razón Social</th><td>LITOPLAS S.A.</td></tr>
-      <tr><th>NIT</th><td>802.009.663-3</td></tr>
-      <tr><th>Dirección domicilio</th><td>Carrera 15 Sur #51B-999</td></tr>
-      <tr><th>Ciudad</th><td>Barranquilla</td></tr>
-      <tr><th>Teléfono</th><td>(605) 3851955</td></tr>
-      <tr><th>Correo oficial</th><td>integridad@litoplas.com</td></tr>
-    </table>
+      <h2>4. Principios que Aplicamos</h2>
+      <p>El tratamiento de sus datos personales se regirá por los principios de: <strong>legalidad, finalidad, libertad, veracidad o calidad, transparencia, acceso y circulación restringida, seguridad y confidencialidad</strong>.</p>
 
-    <h2>5. Derechos de los Titulares</h2>
-    <ul>
-      <li>Conocer, actualizar y rectificar sus datos personales.</li>
-      <li>Solicitar prueba de la Autorización otorgada a LITOPLAS S.A.</li>
-      <li>Ser informado por LITOPLAS S.A. respecto del uso que se ha dado a sus Datos Personales.</li>
-      <li>Acceder en forma gratuita a sus datos personales que hayan sido objeto de Tratamiento.</li>
-      <li>Solicitar a LITOPLAS S.A. la revocatoria de la autorización y/o la supresión de sus Datos Personales.</li>
-    </ul>
+      <h2>5. Derechos del Titular</h2>
+      <p>Como titular de datos personales, usted tiene derecho a:</p>
+      <ul>
+        <li>Conocer, actualizar y rectificar sus datos personales.</li>
+        <li>Solicitar prueba de la autorización otorgada.</li>
+        <li>Ser informado sobre el uso dado a sus datos.</li>
+        <li>Acceder gratuitamente a sus datos al menos una vez al mes.</li>
+        <li>Solicitar la revocatoria de la autorización y/o la supresión de sus datos cuando no exista obligación legal o contractual de mantenerlos.</li>
+        <li>Presentar reclamos ante la Superintendencia de Industria y Comercio por infracciones a la Ley 1581 de 2012.</li>
+      </ul>
 
-    <h2>6. Finalidades del Tratamiento en Litoplas Academy</h2>
-    <ul>
-      <li>Identificación, registro y control de visitantes y contratistas que ingresan a las instalaciones de LITOPLAS S.A.</li>
-      <li>Capacitación obligatoria en seguridad industrial, salud ocupacional y prevención de riesgos.</li>
-      <li>Emisión de certificados de capacitación vigentes por un (1) año.</li>
-      <li>Verificación de vigencia de certificados por parte de personal de seguridad de Litoplas.</li>
-      <li>Generación de estadísticas agregadas (anónimas) de capacitación para mejorar los programas de seguridad.</li>
-    </ul>
+      <h2>6. Seguridad de la Información</h2>
+      <p>LITOPLAS S.A. implementa medidas técnicas, humanas y administrativas para proteger sus datos personales contra adulteración, pérdida, consulta, uso o acceso no autorizado. La contraseña se almacena encriptada mediante bcrypt y la comunicación con el servidor se realiza bajo protocolos seguros (HTTPS).</p>
 
-    <h2>7. Procedimiento de Consultas y Reclamos</h2>
-    <p>El Titular o sus causahabientes podrán remitir su consulta o reclamo a:</p>
-    <ul>
-      <li><strong>Correo electrónico:</strong> integridad@litoplas.com</li>
-      <li><strong>Oficinas:</strong> Carrera 15 Sur #51B-999, Barranquilla, Colombia</li>
-      <li><strong>Teléfono:</strong> (605) 3851955</li>
-    </ul>
-    <p>Las solicitudes serán atendidas en un término máximo de <strong>quince (15) días hábiles</strong>.</p>
+      <h2>7. Vigencia del Certificado y Datos</h2>
+      <p>El certificado de capacitación tiene una vigencia de <strong>un (1) año</strong> contado desde la fecha de emisión. Los datos personales se conservarán mientras sean necesarios para las finalidades descritas o mientras exista una obligación legal de conservación. Una vez finalizado el tratamiento, los datos podrán ser eliminados o archivados de forma segura.</p>
 
-    <h2>8. Transferencia Internacional de Datos</h2>
-    <p>En el caso de <strong>Litoplas Academy</strong>, los datos se almacenan en servidores de Render (Estados Unidos) bajo un contrato de servicio de procesamiento de datos que garantiza niveles de protección adecuados conforme al artículo 26 de la Ley 1581 de 2012.</p>
+      <h2>8. Procedimiento de Consultas y Reclamos</h2>
+      <p>Para ejercer sus derechos de consulta, rectificación, actualización o supresión, puede contactar al <strong>Oficial de Protección de Datos</strong> de LITOPLAS S.A. a través de:</p>
+      <div class="privacy-box">
+        <strong>Correo electrónico:</strong> integridad@litoplas.com<br>
+        <strong>Dirección:</strong> Carrera 15 Sur #51B-999, Barranquilla, Colombia<br>
+        <strong>Teléfono:</strong> (605) 3851955
+      </div>
+      <p>El término máximo de respuesta a consultas es de <strong>15 días hábiles</strong>, prorrogables por 5 días hábiles adicionales cuando existan causas justificadas. Los reclamos serán atendidos en el mismo término, prorrogables por 8 días hábiles.</p>
 
-    <h2>9. Aceptación</h2>
-    <p>Al registrarse en la plataforma Litoplas Academy, usted autoriza de manera previa, expresa e informada a LITOPLAS S.A. para que recolecte, almacene, use, circule y suprima sus datos personales conforme a las finalidades descritas en esta Política.</p>
+      <h2>9. Transferencia de Datos</h2>
+      <p>LITOPLAS S.A. no transferirá sus datos personales a terceros sin su autorización previa, expresa e informada, salvo cuando exista un deber legal o contractual que lo justifique. En caso de transferencia internacional, se garantizará que el receptor cuente con niveles de protección equivalentes a los exigidos por la Ley 1581 de 2012.</p>
 
-    <div class="highlight-box" style="margin-top: 32px;">
-      <strong>Datos de contacto para ejercer sus derechos:</strong><br>
-      📧 integridad@litoplas.com<br>
-      📍 Carrera 15 Sur #51B-999, Barranquilla, Colombia<br>
-      📞 (605) 3851955<br>
-      <em>Oficial de Protección de Datos – Área de Integridad y Cumplimiento</em>
-    </div>
+      <h2>10. Aceptación</h2>
+      <p>Al registrarse en Litoplas Academy, usted declara que ha leído y comprendido la presente Política de Privacidad, y autoriza de manera libre, previa, expresa e informada a LITOPLAS S.A. para el tratamiento de sus datos personales conforme a las finalidades aquí descritas.</p>
 
-    <div style="text-align: center;">
-      <a href="/" class="back-link">← Volver a Litoplas Academy</a>
-    </div>
-
-    <div class="footer-privacy">
-      <p>© 2026 LITOPLAS S.A. – NIT 802.009.663-3. Todos los derechos reservados.</p>
-      <p>Política de Protección de Datos Personales conforme a la Ley 1581 de 2012 y Decreto 1377 de 2013.</p>
+      <div class="privacy-footer">
+        <p>© LITOPLAS S.A. - Todos los derechos reservados.</p>
+        <p>Política actualizada de acuerdo a la Ley 1581 de 2012 y Decreto 1377 de 2013.</p>
+        <a href="index.html" class="back-link">← Volver a Litoplas Academy</a>
+      </div>
     </div>
   </div>
 </body>

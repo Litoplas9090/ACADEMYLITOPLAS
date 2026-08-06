@@ -1,6 +1,7 @@
 /* ============================================
    LITOPLAS ACADEMY - STYLE.CSS v5.5.10
    Sin traducciones - Solo Español
+   Con estilos de aceptación de tratamiento de datos
    ============================================ */
 
 :root {
@@ -92,7 +93,8 @@ body {
   color: var(--color-secondary);
 }
 
-.auth-form input {
+.auth-form input[type="text"],
+.auth-form input[type="password"] {
   width: 100%;
   padding: 12px 15px;
   margin-bottom: 12px;
@@ -102,9 +104,77 @@ body {
   transition: border 0.3s;
 }
 
-.auth-form input:focus {
+.auth-form input[type="text"]:focus,
+.auth-form input[type="password"]:focus {
   outline: none;
   border-color: var(--color-accent);
+}
+
+/* ============================================
+   CONSENTIMIENTO DE TRATAMIENTO DE DATOS
+   ============================================ */
+
+.data-consent-box {
+  background: #f8f9fa;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--radius);
+  padding: 18px 15px;
+  margin: 18px 0;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.data-consent-box:hover {
+  border-color: var(--color-accent);
+}
+
+.data-consent-box.consent-highlight {
+  border-color: var(--color-danger);
+  box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.15);
+  animation: pulseConsent 1.5s ease-in-out;
+}
+
+@keyframes pulseConsent {
+  0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(220, 53, 69, 0.1); }
+  100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+.data-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  margin: 0;
+}
+
+.data-consent-label input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  margin-top: 2px;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.consent-text {
+  font-size: 0.88rem;
+  color: var(--color-text);
+  line-height: 1.6;
+  text-align: justify;
+}
+
+.consent-text strong {
+  color: var(--color-secondary);
+}
+
+.consent-text a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.consent-text a:hover {
+  color: var(--color-secondary);
 }
 
 /* BOTONES */
@@ -1061,6 +1131,8 @@ body {
   .nav-module-btn { width: 38px; height: 38px; font-size: 0.85rem; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .question-config { flex-direction: column; align-items: flex-start; }
+  .data-consent-label { gap: 10px; }
+  .consent-text { font-size: 0.82rem; }
 }
 
 /* ============================================

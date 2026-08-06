@@ -80,14 +80,12 @@ const ADMIN_PASS_HASH = process.env.ADMIN_PASS ? bcrypt.hashSync(process.env.ADM
 function toYouTubeEmbed(url) {
   if (!url) return '';
 
-  // Ya está en formato nocookie embed
   if (url.includes('youtube-nocookie.com/embed/')) {
     const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
     if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0&modestbranding=1';
     return url;
   }
 
-  // Ya es embed normal (youtube.com/embed/)
   if (url.includes('youtube.com/embed/')) {
     const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
     if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0&modestbranding=1';
@@ -95,35 +93,29 @@ function toYouTubeEmbed(url) {
 
   let videoId = '';
 
-  // Formato: https://www.youtube.com/watch?v=VIDEO_ID
   const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
   if (watchMatch) videoId = watchMatch[1];
 
-  // Formato: https://youtu.be/VIDEO_ID
   if (!videoId) {
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
     if (shortMatch) videoId = shortMatch[1];
   }
 
-  // Formato: https://youtube.com/shorts/VIDEO_ID
   if (!videoId) {
     const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
     if (shortsMatch) videoId = shortsMatch[1];
   }
 
-  // Formato: https://youtube.com/live/VIDEO_ID
   if (!videoId) {
     const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
     if (liveMatch) videoId = liveMatch[1];
   }
 
-  // Formato: https://music.youtube.com/watch?v=VIDEO_ID
   if (!videoId) {
     const musicMatch = url.match(/music\.youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/);
     if (musicMatch) videoId = musicMatch[1];
   }
 
-  // Extraer parámetro de tiempo (t=123 o start=123)
   let timeParam = '';
   const timeMatch = url.match(/[?&](?:t|start)=([0-9]+)/);
   if (timeMatch) {
@@ -134,7 +126,6 @@ function toYouTubeEmbed(url) {
     return 'https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1' + timeParam;
   }
 
-  // Fallback: si no se pudo extraer, devolver original (pero probablemente fallará)
   return url;
 }
 
@@ -144,7 +135,6 @@ function toYouTubeEmbed(url) {
 async function initDB() {
   if (dbType === 'postgres') {
     try {
-      // Verificar si el esquema está completo
       const checkUsers = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'full_name'
@@ -160,6 +150,10 @@ async function initDB() {
       const checkModuleVideos = await pool.query(`
         SELECT table_name FROM information_schema.tables 
         WHERE table_name = 'module_videos'
+      `);
+      const checkDataAccepted = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'users' AND column_name = 'data_accepted'
       `);
 
       if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0 || 
@@ -180,6 +174,7 @@ async function initDB() {
           email VARCHAR(255),
           company VARCHAR(255),
           password_hash VARCHAR(255) NOT NULL,
+          data_accepted BOOLEAN DEFAULT FALSE,
           progress INTEGER DEFAULT 0,
           completed_modules INTEGER DEFAULT 0,
           total_modules INTEGER DEFAULT 6,
@@ -189,6 +184,17 @@ async function initDB() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+
+      // Agregar columna data_accepted si no existe (migración)
+      if (checkDataAccepted.rows.length === 0) {
+        try {
+          await pool.query('ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE');
+          console.log('✅ Columna data_accepted agregada a users (PostgreSQL)');
+        } catch (e) {
+          console.log('ℹ️ Columna data_accepted ya existe o error:', e.message);
+        }
+      }
+
       await pool.query(`
         CREATE TABLE IF NOT EXISTS modules (
           id SERIAL PRIMARY KEY,
@@ -235,7 +241,6 @@ async function initDB() {
         )
       `);
 
-      // Insertar módulos iniciales si no existen
       const modCount = await pool.query('SELECT COUNT(*) FROM modules');
       if (parseInt(modCount.rows[0].count) === 0) {
         const modules = [
@@ -251,7 +256,6 @@ async function initDB() {
             'INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
             m
           );
-          // Insertar video placeholder
           await pool.query(
             'INSERT INTO module_videos (module_id, video_url, order_num) VALUES ($1,$2,$3)',
             [res.rows[0].id, 'https://www.youtube.com/embed/VIDEO' + m[4], 1]
@@ -264,7 +268,6 @@ async function initDB() {
       console.error('❌ Error init PostgreSQL:', err.message);
     }
   } else {
-    // SQLite
     db.serialize(() => {
       db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -273,6 +276,7 @@ async function initDB() {
         email TEXT,
         company TEXT,
         password_hash TEXT NOT NULL,
+        data_accepted INTEGER DEFAULT 0,
         progress INTEGER DEFAULT 0,
         completed_modules INTEGER DEFAULT 0,
         total_modules INTEGER DEFAULT 6,
@@ -364,13 +368,15 @@ function authMiddleware(req, res, next) {
 
 app.post('/api/register', async (req, res) => {
   try {
-    const { full_name, document, email, company, password } = req.body;
+    const { full_name, document, email, company, password, data_accepted } = req.body;
     if (!full_name || !document || !password) {
       return res.status(400).json({ error: 'Nombre, documento y contraseña son obligatorios' });
     }
-    // Validación de documento: solo números, 6-12 dígitos
     if (!/^[a-zA-Z0-9-]{5,20}$/i.test(document)) {
       return res.status(400).json({ error: 'El documento debe ser alfanumérico y tener entre 5 y 20 caracteres' });
+    }
+    if (!data_accepted) {
+      return res.status(400).json({ error: 'Debes aceptar la Política de Privacidad y Tratamiento de Datos Personales para registrarte' });
     }
     const hash = await bcrypt.hash(password, 10);
 
@@ -378,8 +384,8 @@ app.post('/api/register', async (req, res) => {
       const exists = await pool.query('SELECT id FROM users WHERE document = $1', [document]);
       if (exists.rows.length > 0) return res.status(400).json({ error: 'El documento ya está registrado' });
       const result = await pool.query(
-        'INSERT INTO users (full_name, document, email, company, password_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-        [full_name, document, email || '', company || '', hash]
+        'INSERT INTO users (full_name, document, email, company, password_hash, data_accepted) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
+        [full_name, document, email || '', company || '', hash, true]
       );
       const token = jwt.sign({ userId: result.rows[0].id, document }, JWT_SECRET, { expiresIn: '24h' });
       res.json({ success: true, token, user: { id: result.rows[0].id, full_name, document } });
@@ -387,8 +393,8 @@ app.post('/api/register', async (req, res) => {
       db.get('SELECT id FROM users WHERE document = ?', [document], (err, row) => {
         if (row) return res.status(400).json({ error: 'El documento ya está registrado' });
         db.run(
-          'INSERT INTO users (full_name, document, email, company, password_hash) VALUES (?,?,?,?,?)',
-          [full_name, document, email || '', company || '', hash],
+          'INSERT INTO users (full_name, document, email, company, password_hash, data_accepted) VALUES (?,?,?,?,?,?)',
+          [full_name, document, email || '', company || '', hash, 1],
           function(err) {
             if (err) return res.status(500).json({ error: err.message });
             const token = jwt.sign({ userId: this.lastID, document }, JWT_SECRET, { expiresIn: '24h' });
@@ -461,7 +467,6 @@ app.get('/api/modules', async (req, res) => {
       });
     }
 
-    // Cargar videos para cada módulo
     for (const mod of modules) {
       if (dbType === 'postgres') {
         const vRes = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [mod.id]);
@@ -626,7 +631,7 @@ app.get('/api/modules/:id/questions', async (req, res) => {
 app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
   try {
     const moduleId = req.params.id;
-    const { answers } = req.body; // { questionId: ['A','B'] } o { questionId: 'A' }
+    const { answers } = req.body;
 
     let questions;
     if (dbType === 'postgres') {
@@ -652,14 +657,11 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
       const correctSet = new Set((q.correct_options || 'A').split(',').map(s => s.trim()));
 
       if (q.allow_multiple) {
-        // Respuestas múltiples: el usuario envía un array
         const userSet = new Set(Array.isArray(userAns) ? userAns : [userAns]);
-        // Es correcto si coincide exactamente
         if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
           correct++;
         }
       } else {
-        // Respuesta única
         if (correctSet.has(userAns)) correct++;
       }
     });
@@ -765,10 +767,10 @@ app.get('/api/admin/users', authMiddleware, async (req, res) => {
   try {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC');
+      const result = await pool.query('SELECT id, full_name, document, email, company, data_accepted, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC');
       res.json(result.rows);
     } else {
-      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
+      db.all('SELECT id, full_name, document, email, company, data_accepted, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users ORDER BY created_at DESC', [], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
@@ -802,10 +804,10 @@ app.get('/api/admin/users/search', authMiddleware, async (req, res) => {
     if (req.user.role !== 'admin') return res.status(403).json({ error: 'Acceso denegado' });
     const { document } = req.query;
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = $1', [document]);
+      const result = await pool.query('SELECT id, full_name, document, email, company, data_accepted, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = $1', [document]);
       res.json(result.rows);
     } else {
-      db.all('SELECT id, full_name, document, email, company, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = ?', [document], (err, rows) => {
+      db.all('SELECT id, full_name, document, email, company, data_accepted, progress, completed_modules, total_modules, certificate_issued, certificate_date, certificate_expiry, created_at FROM users WHERE document = ?', [document], (err, rows) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(rows);
       });
@@ -828,7 +830,6 @@ app.get('/api/admin/stats', authMiddleware, async (req, res) => {
     let stats = {};
 
     if (dbType === 'postgres') {
-      // Totales
       const totalRes = await pool.query('SELECT COUNT(*) as total FROM users');
       const certRes = await pool.query('SELECT COUNT(*) as total FROM users WHERE certificate_issued = TRUE');
       const avgRes = await pool.query('SELECT COALESCE(AVG(progress), 0) as avg FROM users');
@@ -839,7 +840,6 @@ app.get('/api/admin/stats', authMiddleware, async (req, res) => {
       stats.avg_progress = Math.round(parseFloat(avgRes.rows[0].avg));
       stats.expiring_soon = parseInt(expRes.rows[0].total);
 
-      // Por mes y año
       let monthlyQuery = `
         SELECT 
           EXTRACT(YEAR FROM created_at) as year,
@@ -951,7 +951,6 @@ app.post('/api/admin/modules', authMiddleware, async (req, res) => {
         );
         const modId = modRes.rows[0].id;
 
-        // Insertar videos del módulo
         if (m.videos && m.videos.length > 0) {
           for (let v = 0; v < m.videos.length; v++) {
             await pool.query(
@@ -1052,6 +1051,6 @@ app.post('/api/admin/reset-password', authMiddleware, async (req, res) => {
 // ============================================
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log('🚀 Litoplas Academy v5.5 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
+    console.log('🚀 Litoplas Academy v5.5.10 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
   });
 });
