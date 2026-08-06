@@ -14,9 +14,6 @@ const adminMsg = document.getElementById('admin-msg');
 const btnAdminLogin = document.getElementById('btn-admin-login');
 const btnAdminLogout = document.getElementById('btn-admin-logout');
 
-const searchDocument = document.getElementById('search-document');
-const btnSearch = document.getElementById('btn-search');
-const searchResults = document.getElementById('search-results');
 
 const usersTableContainer = document.getElementById('users-table-container');
 const expiringTableContainer = document.getElementById('expiring-table-container');
@@ -40,8 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
   btnAdminLogout.addEventListener('click', doAdminLogout);
   adminPass.addEventListener('keypress', function(e) { if (e.key === 'Enter') doAdminLogin(); });
 
-  btnSearch.addEventListener('click', searchUser);
-  searchDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchUser(); });
 
   btnSaveModules.addEventListener('click', saveModules);
 
@@ -113,25 +108,7 @@ function loadAllAdminData() {
   loadModulesAdmin();
 }
 
-async function searchUser() {
-  const doc = searchDocument.value.trim();
-  if (!doc) { searchResults.innerHTML = '<p class="msg">Ingresa un número de documento</p>'; return; }
-  searchResults.innerHTML = '<p>Buscando...</p>';
 
-  try {
-    const res = await fetch(API_URL + '/api/admin/users/search?document=' + encodeURIComponent(doc), {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const users = await res.json();
-    if (!users || users.length === 0) {
-      searchResults.innerHTML = '<p class="msg">No se encontró ningún usuario con ese documento</p>';
-      return;
-    }
-    renderUserCards(users, searchResults);
-  } catch (err) {
-    searchResults.innerHTML = '<p class="msg error">Error de conexión</p>';
-  }
-}
 
 async function loadUsers() {
   usersTableContainer.innerHTML = '<p>Cargando usuarios...</p>';
@@ -333,32 +310,7 @@ function renderUserTable(users, container, showExpiryOnly) {
   });
 }
 
-function renderUserCards(users, container) {
-  if (!users || users.length === 0) return;
-  let html = '<div class="user-cards">';
-  users.forEach(u => {
-    const certStatus = u.certificate_issued 
-      ? '<span class="badge-success">Certificado Emitido</span>' 
-      : '<span class="badge-pending">Sin Certificado</span>';
-    html += '<div class="user-card">';
-    html += '<h4>' + escapeHtml(u.full_name) + '</h4>';
-    html += '<p><strong>Documento:</strong> ' + escapeHtml(u.document) + '</p>';
-    html += '<p><strong>Empresa:</strong> ' + escapeHtml(u.company || '-') + '</p>';
-    html += '<p><strong>Progreso:</strong> ' + (u.progress || 0) + '%</p>';
-    html += '<p>' + certStatus + '</p>';
-    if (u.certificate_issued) {
-      html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Ver Certificado</button>';
-    }
-    html += '</div>';
-  });
-  html += '</div>';
-  container.innerHTML = html;
-  container.querySelectorAll('.btn-cert').forEach(btn => {
-    btn.addEventListener('click', function() {
-      openCertificateModal(this.getAttribute('data-user-id'), this.getAttribute('data-user-name'), this.getAttribute('data-user-doc'), this.getAttribute('data-expiry'));
-    });
-  });
-}
+
 
 function escapeHtml(text) {
   if (!text) return '';

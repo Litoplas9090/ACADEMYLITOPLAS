@@ -1185,3 +1185,44 @@ body {
     font-size: 1.05rem;
   }
 }
+
+
+/* ============================================
+   SELECTOR DE IDIOMA
+   ============================================ */
+
+.lang-selector {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.lang-btn {
+  padding: 6px 14px;
+  border: 2px solid rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.15);
+  color: white;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.lang-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.lang-btn.active {
+  background: white;
+  color: var(--color-secondary);
+  border-color: white;
+}
+
+@media (max-width: 768px) {
+  .lang-btn {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+  }
+}

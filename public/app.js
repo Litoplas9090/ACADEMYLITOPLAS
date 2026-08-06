@@ -10,6 +10,208 @@ let allModules = [];
 let userProgress = [];
 let currentModuleIndex = 0;
 
+// ============================================
+// SISTEMA DE TRADUCCIONES ES / EN / PT
+// ============================================
+const TRANSLATIONS = {
+  es: {
+    subtitle: "Capacitación en Seguridad Industrial para Visitantes y Contratistas",
+    login_title: "Iniciar Sesión",
+    register_title: "Registro de Nuevo Usuario",
+    tab_login: "Iniciar Sesión",
+    tab_register: "Registrarse",
+    btn_login: "Ingresar",
+    btn_register: "Crear Cuenta",
+    btn_logout: "Cerrar Sesión",
+    btn_back: "Volver al Curso",
+    btn_download: "Descargar PDF",
+    progress: "Progreso",
+    quiz_title: "Cuestionario del Módulo",
+    quiz_desc: "Responde todas las preguntas correctamente para avanzar. Necesitas mínimo 70%.",
+    quiz_submit: "Enviar Respuestas",
+    quiz_all_required: "Responde todas las preguntas antes de enviar",
+    quiz_approved: "¡Felicidades! Aprobaste con {score}%. Avanzando...",
+    quiz_failed: "Obtuviste {score}%. Necesitas mínimo 70% para aprobar. Intenta de nuevo.",
+    module_completed: "✓ Este módulo ya ha sido completado",
+    btn_next: "Continuar al siguiente módulo →",
+    btn_cert: "🏆 Ver Certificado",
+    btn_start_quiz: "Responder Cuestionario para continuar",
+    cert_title: "Certificado de Finalización",
+    cert_subtitle: "Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial",
+    cert_to: "Otorgado a",
+    cert_doc: "Documento",
+    cert_text: "Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.",
+    cert_valid: "Vigente hasta",
+    cert_issued: "Fecha de emisión",
+    doc_placeholder: "Número de Documento",
+    pass_placeholder: "Contraseña",
+    name_placeholder: "Nombre Completo *",
+    company_placeholder: "Empresa / Contratista",
+    pass2_placeholder: "Confirmar Contraseña *",
+    error_conn: "Error de conexión",
+    error_login: "Error al iniciar sesión",
+    error_register: "Error al registrar",
+    welcome: "¡Bienvenido, {name}!",
+    register_ok: "¡Registro exitoso! Bienvenido, {name}",
+    doc_invalid: "El documento debe ser alfanumérico y tener entre 5 y 20 caracteres",
+    pass_mismatch: "Las contraseñas no coinciden",
+    pass_short: "La contraseña debe tener al menos 6 caracteres",
+    required_fields: "Nombre, documento y contraseña son obligatorios",
+    video_fallback: "⚠️ No se puede reproducir este video incrustado.",
+    video_youtube: "▶️ Ver en YouTube",
+    video_hint: "Si el video no carga, el dueño puede haber desactivado la reproducción incrustada. Contacta al administrador.",
+    doc_module: "📄 Descargar documento del módulo",
+    multi_hint: "✓ Puedes seleccionar varias respuestas",
+    doc_question: "📄 Ver documento"
+  },
+  en: {
+    subtitle: "Industrial Safety Training for Visitors and Contractors",
+    login_title: "Log In",
+    register_title: "New User Registration",
+    tab_login: "Log In",
+    tab_register: "Sign Up",
+    btn_login: "Sign In",
+    btn_register: "Create Account",
+    btn_logout: "Log Out",
+    btn_back: "Back to Course",
+    btn_download: "Download PDF",
+    progress: "Progress",
+    quiz_title: "Module Quiz",
+    quiz_desc: "Answer all questions correctly to advance. You need at least 70%.",
+    quiz_submit: "Submit Answers",
+    quiz_all_required: "Answer all questions before submitting",
+    quiz_approved: "Congratulations! You passed with {score}%. Moving forward...",
+    quiz_failed: "You got {score}%. You need at least 70% to pass. Try again.",
+    module_completed: "✓ This module has already been completed",
+    btn_next: "Continue to next module →",
+    btn_cert: "🏆 View Certificate",
+    btn_start_quiz: "Answer Quiz to continue",
+    cert_title: "Certificate of Completion",
+    cert_subtitle: "Litoplas S.A. - Risk Management and Industrial Safety",
+    cert_to: "Awarded to",
+    cert_doc: "Document",
+    cert_text: "For successfully completing the industrial safety induction program for visitors and contractors, in accordance with Litoplas S.A. standards.",
+    cert_valid: "Valid until",
+    cert_issued: "Issued on",
+    doc_placeholder: "Document Number",
+    pass_placeholder: "Password",
+    name_placeholder: "Full Name *",
+    company_placeholder: "Company / Contractor",
+    pass2_placeholder: "Confirm Password *",
+    error_conn: "Connection error",
+    error_login: "Error signing in",
+    error_register: "Registration error",
+    welcome: "Welcome, {name}!",
+    register_ok: "Registration successful! Welcome, {name}",
+    doc_invalid: "Document must be alphanumeric and between 5 and 20 characters",
+    pass_mismatch: "Passwords do not match",
+    pass_short: "Password must be at least 6 characters",
+    required_fields: "Name, document and password are required",
+    video_fallback: "⚠️ This embedded video cannot be played.",
+    video_youtube: "▶️ Watch on YouTube",
+    video_hint: "If the video does not load, the owner may have disabled embedded playback. Contact the administrator.",
+    doc_module: "📄 Download module document",
+    multi_hint: "✓ You can select multiple answers",
+    doc_question: "📄 View document"
+  },
+  pt: {
+    subtitle: "Treinamento em Segurança Industrial para Visitantes e Contratistas",
+    login_title: "Entrar",
+    register_title: "Cadastro de Novo Usuário",
+    tab_login: "Entrar",
+    tab_register: "Cadastrar-se",
+    btn_login: "Entrar",
+    btn_register: "Criar Conta",
+    btn_logout: "Sair",
+    btn_back: "Voltar ao Curso",
+    btn_download: "Baixar PDF",
+    progress: "Progresso",
+    quiz_title: "Questionário do Módulo",
+    quiz_desc: "Responda todas as perguntas corretamente para avançar. Você precisa de no mínimo 70%.",
+    quiz_submit: "Enviar Respostas",
+    quiz_all_required: "Responda todas as perguntas antes de enviar",
+    quiz_approved: "Parabéns! Você foi aprovado com {score}%. Avançando...",
+    quiz_failed: "Você obteve {score}%. Você precisa de no mínimo 70% para passar. Tente novamente.",
+    module_completed: "✓ Este módulo já foi concluído",
+    btn_next: "Continuar para o próximo módulo →",
+    btn_cert: "🏆 Ver Certificado",
+    btn_start_quiz: "Responder Questionário para continuar",
+    cert_title: "Certificado de Conclusão",
+    cert_subtitle: "Litoplas S.A. - Gestão de Riscos e Segurança Industrial",
+    cert_to: "Concedido a",
+    cert_doc: "Documento",
+    cert_text: "Por completar satisfatoriamente o programa de indução em segurança industrial para visitantes e contratistas, de acordo com os padrões da Litoplas S.A.",
+    cert_valid: "Válido até",
+    cert_issued: "Data de emissão",
+    doc_placeholder: "Número do Documento",
+    pass_placeholder: "Senha",
+    name_placeholder: "Nome Completo *",
+    company_placeholder: "Empresa / Contratista",
+    pass2_placeholder: "Confirmar Senha *",
+    error_conn: "Erro de conexão",
+    error_login: "Erro ao entrar",
+    error_register: "Erro ao cadastrar",
+    welcome: "Bem-vindo, {name}!",
+    register_ok: "Cadastro realizado com sucesso! Bem-vindo, {name}",
+    doc_invalid: "O documento deve ser alfanumérico e ter entre 5 e 20 caracteres",
+    pass_mismatch: "As senhas não coincidem",
+    pass_short: "A senha deve ter pelo menos 6 caracteres",
+    required_fields: "Nome, documento e senha são obrigatórios",
+    video_fallback: "⚠️ Não é possível reproduzir este vídeo incorporado.",
+    video_youtube: "▶️ Ver no YouTube",
+    video_hint: "Se o vídeo não carregar, o proprietário pode ter desativado a reprodução incorporada. Entre em contato com o administrador.",
+    doc_module: "📄 Baixar documento do módulo",
+    multi_hint: "✓ Você pode selecionar várias respostas",
+    doc_question: "📄 Ver documento"
+  }
+};
+
+let currentLang = localStorage.getItem("litoplas_lang") || "es";
+
+function t(key, params) {
+  let text = TRANSLATIONS[currentLang]?.[key] || TRANSLATIONS["es"][key] || key;
+  if (params) {
+    Object.keys(params).forEach(function(k) {
+      text = text.replace("{" + k + "}", params[k]);
+    });
+  }
+  return text;
+}
+
+function applyTranslations() {
+  document.querySelectorAll("[data-i18n]").forEach(function(el) {
+    var key = el.getAttribute("data-i18n");
+    if (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) {
+      el.textContent = TRANSLATIONS[currentLang][key];
+    }
+  });
+  var loginDoc = document.getElementById("login-document");
+  if (loginDoc) loginDoc.placeholder = t("doc_placeholder");
+  var loginPass = document.getElementById("login-password");
+  if (loginPass) loginPass.placeholder = t("pass_placeholder");
+  var regName = document.getElementById("reg-fullname");
+  if (regName) regName.placeholder = t("name_placeholder");
+  var regDoc = document.getElementById("reg-document");
+  if (regDoc) regDoc.placeholder = t("doc_placeholder");
+  var regComp = document.getElementById("reg-company");
+  if (regComp) regComp.placeholder = t("company_placeholder");
+  var regPass = document.getElementById("reg-password");
+  if (regPass) regPass.placeholder = t("pass_placeholder");
+  var regPass2 = document.getElementById("reg-password2");
+  if (regPass2) regPass2.placeholder = t("pass2_placeholder");
+  document.querySelectorAll(".lang-btn").forEach(function(btn) {
+    btn.classList.toggle("active", btn.getAttribute("data-lang") === currentLang);
+  });
+}
+
+function setLang(lang) {
+  if (!TRANSLATIONS[lang]) return;
+  currentLang = lang;
+  localStorage.setItem("litoplas_lang", lang);
+  applyTranslations();
+  if (allModules.length > 0) renderActiveModule();
+}
+
 // Helper: convertir URL de YouTube a embed (fallback si backend no lo hizo)
 function toYouTubeEmbedClient(url) {
   if (!url) return '';
@@ -80,7 +282,11 @@ const certExpiry = document.getElementById('cert-expiry');
 const certDate = document.getElementById('cert-date');
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[APP] Iniciando Litoplas Academy v5.4');
+  console.log('[APP] Iniciando Litoplas Academy v5.5');
+  applyTranslations();
+  document.querySelectorAll('.lang-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() { setLang(this.getAttribute('data-lang')); });
+  });
 
   tabLogin.addEventListener('click', showLogin);
   tabRegister.addEventListener('click', showRegister);
@@ -151,7 +357,7 @@ async function doLogin() {
       currentToken = data.token;
       currentUser = data.user;
       localStorage.setItem('litoplas_token', currentToken);
-      loginMsg.textContent = '¡Bienvenido, ' + data.user.full_name + '!';
+      loginMsg.textContent = t("welcome", {name: data.user.full_name});
       loginMsg.className = 'msg success';
       setTimeout(() => {
         showDashboard();
@@ -159,11 +365,11 @@ async function doLogin() {
         loadCourseData();
       }, 800);
     } else {
-      loginMsg.textContent = data.error || 'Error al iniciar sesión';
+      loginMsg.textContent = data.error || t("error_login");
       loginMsg.className = 'msg error';
     }
   } catch (err) {
-    loginMsg.textContent = 'Error de conexión';
+    loginMsg.textContent = t("error_conn");
     loginMsg.className = 'msg error';
   } finally {
     btnLogin.textContent = 'Ingresar';
@@ -179,22 +385,22 @@ async function doRegister() {
   const password2 = regPassword2.value;
 
   if (!fullname || !documento || !password) {
-    registerMsg.textContent = 'Nombre, documento y contraseña son obligatorios';
+    registerMsg.textContent = t("required_fields");
     registerMsg.className = 'msg error';
     return;
   }
   if (!/^[a-zA-Z0-9-]{5,20}$/i.test(documento)) {
-    registerMsg.textContent = 'El documento debe ser alfanumérico y tener entre 5 y 20 caracteres';
+    registerMsg.textContent = t("doc_invalid");
     registerMsg.className = 'msg error';
     return;
   }
   if (password !== password2) {
-    registerMsg.textContent = 'Las contraseñas no coinciden';
+    registerMsg.textContent = t("pass_mismatch");
     registerMsg.className = 'msg error';
     return;
   }
   if (password.length < 6) {
-    registerMsg.textContent = 'La contraseña debe tener al menos 6 caracteres';
+    registerMsg.textContent = t("pass_short");
     registerMsg.className = 'msg error';
     return;
   }
@@ -214,7 +420,7 @@ async function doRegister() {
       currentToken = data.token;
       currentUser = data.user;
       localStorage.setItem('litoplas_token', currentToken);
-      registerMsg.textContent = '¡Registro exitoso! Bienvenido, ' + data.user.full_name;
+      registerMsg.textContent = t("register_ok", {name: data.user.full_name});
       registerMsg.className = 'msg success';
       setTimeout(() => {
         showDashboard();
@@ -222,11 +428,11 @@ async function doRegister() {
         loadCourseData();
       }, 1500);
     } else {
-      registerMsg.textContent = data.error || 'Error al registrar';
+      registerMsg.textContent = data.error || t("error_register");
       registerMsg.className = 'msg error';
     }
   } catch (err) {
-    registerMsg.textContent = 'Error de conexión';
+    registerMsg.textContent = t("error_conn");
     registerMsg.className = 'msg error';
   } finally {
     btnRegister.textContent = 'Crear Cuenta';
@@ -346,20 +552,20 @@ function renderActiveModule() {
   // Documento del módulo
   if (mod.document_url) {
     html += '<div class="module-document">';
-    html += '<a href="' + escapeHtml(mod.document_url) + '" target="_blank" class="btn-doc">📄 Descargar documento del módulo</a>';
+    html += '<a href="' + escapeHtml(mod.document_url) + '" target="_blank" class="btn-doc">' + t("doc_module") + '</a>';
     html += '</div>';
   }
 
   if (completed) {
-    html += '<div class="module-completed-msg">✓ Este módulo ya ha sido completado</div>';
+    html += '<div class="module-completed-msg">' + t("module_completed") + '</div>';
     if (!isLast) {
-      html += '<button id="btn-next-module" class="btn-primary">Continuar al siguiente módulo →</button>';
+      html += '<button id="btn-next-module" class="btn-primary">' + t("btn_next") + '</button>';
     } else {
-      html += '<button id="btn-view-cert" class="btn-primary">🏆 Ver Certificado</button>';
+      html += '<button id="btn-view-cert" class="btn-primary">' + t("btn_cert") + '</button>';
     }
   } else {
     html += '<div class="module-action-area">';
-    html += '<button id="btn-start-quiz" class="btn-primary">Responder Cuestionario para continuar</button>';
+    html += '<button id="btn-start-quiz" class="btn-primary">' + t("btn_start_quiz") + '</button>';
     html += '</div>';
   }
 
@@ -396,8 +602,8 @@ async function loadQuiz(moduleId) {
     }
 
     let html = '<div class="quiz-card">';
-    html += '<h3>Cuestionario del Módulo</h3>';
-    html += '<p>Responde todas las preguntas correctamente para avanzar. Necesitas mínimo 70%.</p>';
+    html += '<h3>' + t("quiz_title") + '</h3>';
+    html += '<p>' + t("quiz_desc") + '</p>';
     html += '<div class="quiz-questions">';
 
     questions.forEach((q, idx) => {
@@ -416,7 +622,7 @@ async function loadQuiz(moduleId) {
         html += '<iframe src="' + escapeHtml(qVideoUrl) + '" frameborder="0" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
         html += '</div>';
         html += '<div class="video-fallback hidden">';
-        html += '<p>⚠️ No se puede reproducir este video incrustado.</p>';
+        html += '<p>' + t("video_fallback") + '</p>';
         if (qVideoId) {
           html += '<a href="https://www.youtube.com/watch?v=' + qVideoId + '" target="_blank" class="btn-doc">▶️ Ver en YouTube</a>';
         }
@@ -428,7 +634,7 @@ async function loadQuiz(moduleId) {
       // Documento de la pregunta
       if (q.document_url) {
         html += '<div class="question-doc">';
-        html += '<a href="' + escapeHtml(q.document_url) + '" target="_blank" class="btn-doc-small">📄 Ver documento</a>';
+        html += '<a href="' + escapeHtml(q.document_url) + '" target="_blank" class="btn-doc-small">' + t("doc_question") + '</a>';
         html += '</div>';
       }
 
@@ -451,14 +657,14 @@ async function loadQuiz(moduleId) {
       });
 
       if (isMultiple) {
-        html += '<p class="q-hint">✓ Puedes seleccionar varias respuestas</p>';
+        html += '<p class="q-hint">' + t("multi_hint") + '</p>';
       }
 
       html += '</div>';
     });
 
     html += '</div>';
-    html += '<button id="btn-submit-quiz" class="btn-primary">Enviar Respuestas</button>';
+    html += '<button id="btn-submit-quiz" class="btn-primary">' + t("quiz_submit") + '</button>';
     html += '<p id="quiz-msg" class="msg"></p>';
     html += '</div>';
 
@@ -491,7 +697,7 @@ async function submitQuiz(moduleId, questions) {
   });
 
   if (!allAnswered) {
-    document.getElementById('quiz-msg').textContent = 'Responde todas las preguntas antes de enviar';
+    document.getElementById("quiz-msg").textContent = t("quiz_all_required");
     document.getElementById('quiz-msg').className = 'msg error';
     return;
   }
@@ -508,17 +714,17 @@ async function submitQuiz(moduleId, questions) {
     const data = await res.json();
 
     if (data.approved) {
-      document.getElementById('quiz-msg').textContent = '¡Felicidades! Aprobaste con ' + data.score + '%. Avanzando...';
+      document.getElementById("quiz-msg").textContent = t("quiz_approved", {score: data.score});
       document.getElementById('quiz-msg').className = 'msg success';
       setTimeout(() => {
         completeModule(moduleId);
       }, 1500);
     } else {
-      document.getElementById('quiz-msg').textContent = 'Obtuviste ' + data.score + '%. Necesitas mínimo 70% para aprobar. Intenta de nuevo.';
+      document.getElementById("quiz-msg").textContent = t("quiz_failed", {score: data.score});
       document.getElementById('quiz-msg').className = 'msg error';
     }
   } catch (err) {
-    document.getElementById('quiz-msg').textContent = 'Error validando respuestas';
+    document.getElementById("quiz-msg").textContent = t("error_conn");
     document.getElementById('quiz-msg').className = 'msg error';
   }
 }
@@ -576,7 +782,7 @@ async function showCertificateView(expiryDate) {
         certExpiry.textContent = d.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
       }
       const now = new Date();
-      certDate.textContent = 'Fecha de emisión: ' + now.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+      certDate.textContent = t("cert_issued") + ": " + now.toLocaleDateString(currentLang === "en" ? "en-US" : currentLang === "pt" ? "pt-BR" : "es-CO", { day: "numeric", month: "long", year: "numeric" });
     }
   } catch (err) {
     console.error('Error cargando certificado:', err);
