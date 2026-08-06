@@ -360,17 +360,22 @@ function downloadAdminCertificate() {
   if (!element) return;
   const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
 
-  // Clonar el certificado en un elemento temporal fuera del flujo
-  const clone = element.cloneNode(true);
-  clone.style.position = 'fixed';
-  clone.style.left = '-9999px';
-  clone.style.top = '0';
-  clone.style.width = '297mm';
-  clone.style.height = '210mm';
-  clone.style.maxWidth = 'none';
-  clone.style.margin = '0';
-  clone.style.padding = '18px 28px';
-  document.body.appendChild(clone);
+  const modal = document.getElementById('cert-modal');
+  const wasHidden = modal ? modal.classList.contains('hidden') : false;
+
+  // Hacer visible temporalmente para que html2canvas pueda renderizarlo
+  if (modal && wasHidden) {
+    modal.classList.remove('hidden');
+    modal.style.position = 'absolute';
+    modal.style.left = '-9999px';
+    modal.style.top = '0';
+  }
+
+  // Forzar dimensiones exactas A4 para captura
+  const originalWidth = element.style.width;
+  const originalMaxWidth = element.style.maxWidth;
+  element.style.width = '297mm';
+  element.style.maxWidth = 'none';
 
   const opt = {
     margin: 0,
@@ -386,10 +391,24 @@ function downloadAdminCertificate() {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
 
-  html2pdf().set(opt).from(clone).save().then(function() {
-    document.body.removeChild(clone);
+  html2pdf().set(opt).from(element).save().then(function() {
+    element.style.width = originalWidth;
+    element.style.maxWidth = originalMaxWidth;
+    if (modal && wasHidden) {
+      modal.classList.add('hidden');
+      modal.style.position = '';
+      modal.style.left = '';
+      modal.style.top = '';
+    }
   }).catch(function() {
-    document.body.removeChild(clone);
+    element.style.width = originalWidth;
+    element.style.maxWidth = originalMaxWidth;
+    if (modal && wasHidden) {
+      modal.classList.add('hidden');
+      modal.style.position = '';
+      modal.style.left = '';
+      modal.style.top = '';
+    }
   });
 }
 
