@@ -1,7 +1,7 @@
 /* ============================================
    LITOPLAS ACADEMY - STYLE.CSS v5.5.10
    Sin traducciones - Solo Español
-   Con estilos de aceptación de tratamiento de datos
+   Con aceptación de tratamiento de datos
    ============================================ */
 
 :root {
@@ -503,14 +503,16 @@ body {
   margin-top: 5px;
 }
 
-/* CERTIFICADO */
+/* ============================================
+   CERTIFICADO - VISTA EN PANTALLA
+   ============================================ */
 .certificate-section { animation: fadeIn 0.5s; }
 
 .certificate-card {
   background: white;
   border: 3px solid var(--color-secondary);
   border-radius: 12px;
-  padding: 18px 28px;
+  padding: 30px 40px;
   width: 297mm;
   height: 210mm;
   max-width: 100%;
@@ -519,77 +521,98 @@ body {
   position: relative;
   overflow: hidden;
   box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+  display: block;
 }
 
-.cert-header { margin-bottom: 6px; }
-.cert-logo { max-height: 48px; }
+.cert-header { 
+  text-align: center; 
+  margin-bottom: 15px; 
+}
+
+.cert-logo { 
+  max-height: 55px; 
+  display: inline-block;
+}
+
+.cert-body {
+  text-align: center;
+  padding: 10px 0;
+}
 
 .cert-body h2 {
   color: var(--color-primary);
-  font-size: 1.45rem;
-  margin-bottom: 4px;
+  font-size: 1.6rem;
+  margin: 8px 0 6px 0;
   text-transform: uppercase;
-  letter-spacing: 2px;
+  letter-spacing: 3px;
+  font-weight: 700;
 }
 
 .cert-body h3 {
   color: var(--color-secondary);
-  font-size: 0.92rem;
-  margin-bottom: 10px;
+  font-size: 1rem;
+  margin: 0 0 25px 0;
   font-weight: 500;
 }
 
 .cert-label {
   color: var(--color-text-light);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
-  margin-top: 8px;
+  margin: 18px 0 4px 0;
+  display: block;
 }
 
 .cert-name {
-  font-size: 1.35rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: var(--color-secondary);
-  margin: 4px 0;
+  margin: 4px 0 8px 0;
+  display: block;
 }
 
 .cert-document {
-  font-size: 1rem;
+  font-size: 1.1rem;
   color: var(--color-text);
   font-weight: 600;
-  margin-bottom: 8px;
+  margin: 4px 0 15px 0;
+  display: block;
 }
 
 .cert-text {
   color: var(--color-text-light);
-  font-size: 0.82rem;
-  max-width: 560px;
-  margin: 0 auto 8px;
-  line-height: 1.3;
+  font-size: 0.85rem;
+  max-width: 600px;
+  margin: 0 auto 15px auto;
+  line-height: 1.4;
+  display: block;
 }
 
 .cert-expiry {
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-accent);
+  margin: 4px 0 8px 0;
+  display: block;
 }
 
 .cert-date {
   color: var(--color-text-light);
-  font-size: 0.78rem;
-  margin-top: 6px;
+  font-size: 0.8rem;
+  margin-top: 10px;
+  display: block;
 }
 
-.cert-footer { margin-top: 8px; }
+.cert-footer { 
+  margin-top: 30px; 
+}
 
 .cert-stripe {
-  height: 6px;
+  height: 8px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-accent));
   border-radius: 4px;
+  display: block;
 }
 
 .cert-actions {
@@ -1119,7 +1142,7 @@ body {
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .header h1 { font-size: 1.5rem; }
-  .certificate-card { padding: 15px 12px; width: auto; height: auto; }
+  .certificate-card { padding: 20px 15px; width: auto; height: auto; min-height: 400px; }
   .cert-name { font-size: 1.15rem; }
   .user-bar { flex-direction: column; align-items: flex-start; }
   .admin-tabs { flex-direction: column; }
@@ -1136,7 +1159,7 @@ body {
 }
 
 /* ============================================
-   ESTILOS v5.5 - VIDEO FALLBACK Y VALIDACIÓN
+   VIDEO FALLBACK Y VALIDACIÓN
    ============================================ */
 
 .video-wrapper {
@@ -1200,7 +1223,7 @@ body {
 }
 
 /* ============================================
-   ADMIN PANEL UNIFICADO v5.5.3
+   ADMIN PANEL UNIFICADO
    ============================================ */
 
 .admin-unified {

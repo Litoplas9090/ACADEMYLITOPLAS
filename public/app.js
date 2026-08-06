@@ -11,7 +11,6 @@ let allModules = [];
 let userProgress = [];
 let currentModuleIndex = 0;
 
-// Helper: convertir URL de YouTube a embed (fallback si backend no lo hizo)
 function toYouTubeEmbedClient(url) {
   if (!url) return '';
   if (url.includes('youtube-nocookie.com/embed/')) return url;
@@ -201,11 +200,9 @@ async function doRegister() {
     registerMsg.className = 'msg error';
     return;
   }
-  // VALIDACIÓN OBLIGATORIA: Aceptación de tratamiento de datos
   if (!dataConsent) {
     registerMsg.textContent = 'Debes aceptar la Política de Privacidad y Tratamiento de Datos Personales para continuar. Lee el documento y marca la casilla de autorización.';
     registerMsg.className = 'msg error';
-    // Hacer scroll al checkbox para que el usuario lo vea
     if (regDataConsent) {
       regDataConsent.scrollIntoView({ behavior: 'smooth', block: 'center' });
       regDataConsent.parentElement.classList.add('consent-highlight');
@@ -609,57 +606,142 @@ async function showCertificateView(expiryDate) {
   }
 }
 
+// ============================================
+// DESCARGA DE CERTIFICADO PDF - VERSIÓN CORREGIDA
+// ============================================
 function downloadCertificatePDF() {
-  const element = document.getElementById('certificate-card');
-  if (!element) return;
+  const original = document.getElementById('certificate-card');
+  if (!original) return;
 
-  const certSection = document.getElementById('certificate-section');
-  const wasHidden = certSection ? certSection.classList.contains('hidden') : false;
+  const docName = currentUser?.document || 'usuario';
 
-  if (certSection && wasHidden) {
-    certSection.classList.remove('hidden');
-    certSection.style.position = 'absolute';
-    certSection.style.left = '-9999px';
-    certSection.style.top = '0';
+  // 1. Clonar el certificado para manipularlo sin afectar la vista
+  const clone = original.cloneNode(true);
+  clone.id = 'cert-clone-pdf';
+
+  // 2. Estilos inline forzados para A4 landscape exacto (297mm x 210mm)
+  clone.style.cssText = '';
+  clone.style.position = 'fixed';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.width = '297mm';
+  clone.style.height = '210mm';
+  clone.style.maxWidth = 'none';
+  clone.style.minWidth = '297mm';
+  clone.style.maxHeight = '210mm';
+  clone.style.minHeight = '210mm';
+  clone.style.margin = '0';
+  clone.style.padding = '30px 40px';
+  clone.style.background = '#ffffff';
+  clone.style.border = '3px solid #003366';
+  clone.style.borderRadius = '12px';
+  clone.style.boxSizing = 'border-box';
+  clone.style.display = 'block';
+  clone.style.overflow = 'hidden';
+  clone.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+  clone.style.textAlign = 'center';
+
+  // 3. Aplicar estilos inline a cada hijo para evitar problemas de CSS externo
+  const certHeader = clone.querySelector('.cert-header');
+  if (certHeader) {
+    certHeader.style.cssText = 'text-align:center; margin-bottom:15px;';
   }
 
-  const originalWidth = element.style.width;
-  const originalMaxWidth = element.style.maxWidth;
-  element.style.width = '297mm';
-  element.style.maxWidth = 'none';
+  const certLogo = clone.querySelector('.cert-logo');
+  if (certLogo) {
+    certLogo.style.cssText = 'max-height:55px; display:inline-block;';
+  }
 
+  const certBody = clone.querySelector('.cert-body');
+  if (certBody) {
+    certBody.style.cssText = 'text-align:center; padding:10px 0;';
+  }
+
+  const h2 = clone.querySelector('.cert-body h2');
+  if (h2) {
+    h2.style.cssText = 'color:#c41e3a; font-size:1.6rem; margin:8px 0 6px 0; text-transform:uppercase; letter-spacing:3px; font-weight:700;';
+  }
+
+  const h3 = clone.querySelector('.cert-body h3');
+  if (h3) {
+    h3.style.cssText = 'color:#003366; font-size:1rem; margin:0 0 25px 0; font-weight:500;';
+  }
+
+  const labels = clone.querySelectorAll('.cert-label');
+  labels.forEach(lbl => {
+    lbl.style.cssText = 'color:#666; font-size:0.75rem; text-transform:uppercase; letter-spacing:1.5px; margin:18px 0 4px 0; display:block;';
+  });
+
+  const cName = clone.querySelector('.cert-name');
+  if (cName) {
+    cName.style.cssText = 'font-size:1.4rem; font-weight:700; color:#003366; margin:4px 0 8px 0; display:block;';
+  }
+
+  const cDoc = clone.querySelector('.cert-document');
+  if (cDoc) {
+    cDoc.style.cssText = 'font-size:1.1rem; color:#333; font-weight:600; margin:4px 0 15px 0; display:block;';
+  }
+
+  const cText = clone.querySelector('.cert-text');
+  if (cText) {
+    cText.style.cssText = 'color:#555; font-size:0.85rem; max-width:600px; margin:0 auto 15px auto; line-height:1.4; display:block;';
+  }
+
+  const cExpiry = clone.querySelector('.cert-expiry');
+  if (cExpiry) {
+    cExpiry.style.cssText = 'font-size:1.15rem; font-weight:700; color:#00a8b5; margin:4px 0 8px 0; display:block;';
+  }
+
+  const cDate = clone.querySelector('.cert-date');
+  if (cDate) {
+    cDate.style.cssText = 'color:#666; font-size:0.8rem; margin-top:10px; display:block;';
+  }
+
+  const certFooter = clone.querySelector('.cert-footer');
+  if (certFooter) {
+    certFooter.style.cssText = 'margin-top:auto; padding-top:20px;';
+  }
+
+  const certStripe = clone.querySelector('.cert-stripe');
+  if (certStripe) {
+    certStripe.style.cssText = 'height:8px; background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5); border-radius:4px; display:block;';
+  }
+
+  // 4. Insertar en el DOM para que html2canvas pueda renderizarlo
+  document.body.appendChild(clone);
+
+  // 5. Opciones de html2pdf optimizadas para A4 landscape exacto
   const opt = {
     margin: 0,
-    filename: 'Certificado_Litoplas_' + (currentUser?.document || 'usuario') + '.pdf',
+    filename: 'Certificado_Litoplas_' + docName + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
-      scale: 2, 
-      useCORS: true, 
+      scale: 2,
+      useCORS: true,
       logging: false,
       width: 1123,
-      height: 794
+      height: 794,
+      windowWidth: 1123,
+      windowHeight: 794,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0
     },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    jsPDF: { 
+      unit: 'mm', 
+      format: 'a4', 
+      orientation: 'landscape',
+      compress: true
+    }
   };
 
-  html2pdf().set(opt).from(element).save().then(function() {
-    element.style.width = originalWidth;
-    element.style.maxWidth = originalMaxWidth;
-    if (certSection && wasHidden) {
-      certSection.classList.add('hidden');
-      certSection.style.position = '';
-      certSection.style.left = '';
-      certSection.style.top = '';
-    }
-  }).catch(function() {
-    element.style.width = originalWidth;
-    element.style.maxWidth = originalMaxWidth;
-    if (certSection && wasHidden) {
-      certSection.classList.add('hidden');
-      certSection.style.position = '';
-      certSection.style.left = '';
-      certSection.style.top = '';
-    }
+  // 6. Generar PDF y limpiar
+  html2pdf().set(opt).from(clone).save().then(function() {
+    if (clone.parentNode) clone.parentNode.removeChild(clone);
+  }).catch(function(err) {
+    console.error('Error generando PDF:', err);
+    if (clone.parentNode) clone.parentNode.removeChild(clone);
   });
 }
 

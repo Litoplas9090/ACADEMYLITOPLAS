@@ -1,5 +1,5 @@
 // ============================================
-// LITOPLAS ACADEMY - ADMIN.JS v5.4
+// LITOPLAS ACADEMY - ADMIN.JS v5.5.10
 // Estadísticas, eliminar usuarios, módulos dinámicos, preguntas avanzadas
 // ============================================
 
@@ -13,7 +13,6 @@ const adminPass = document.getElementById('admin-pass');
 const adminMsg = document.getElementById('admin-msg');
 const btnAdminLogin = document.getElementById('btn-admin-login');
 const btnAdminLogout = document.getElementById('btn-admin-logout');
-
 
 const usersTableContainer = document.getElementById('users-table-container');
 const expiringTableContainer = document.getElementById('expiring-table-container');
@@ -31,12 +30,11 @@ let adminModulesData = [];
 let adminQuestionsData = {};
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.5.3');
+  console.log('[ADMIN] Iniciando panel administrativo v5.5.10');
 
   btnAdminLogin.addEventListener('click', doAdminLogin);
   btnAdminLogout.addEventListener('click', doAdminLogout);
   adminPass.addEventListener('keypress', function(e) { if (e.key === 'Enter') doAdminLogin(); });
-
 
   btnSaveModules.addEventListener('click', saveModules);
 
@@ -108,8 +106,6 @@ function loadAllAdminData() {
   loadModulesAdmin();
 }
 
-
-
 async function loadUsers() {
   usersTableContainer.innerHTML = '<p>Cargando usuarios...</p>';
   try {
@@ -165,7 +161,6 @@ async function loadStats() {
     html += '<div class="stat-card"><div class="stat-number">' + (stats.expiring_soon || 0) + '</div><div class="stat-label">Próximos a Vencer</div></div>';
     html += '</div>';
 
-    // Filtros
     html += '<div class="stats-filters">';
     html += '<h4>Filtrar por período</h4>';
     html += '<div class="filter-row">';
@@ -174,7 +169,6 @@ async function loadStats() {
     html += '<button id="btn-filter-stats" class="btn-primary" style="width:auto;padding:10px 20px;">Filtrar</button>';
     html += '</div></div>';
 
-    // Tabla mensual
     if (stats.monthly && stats.monthly.length > 0) {
       html += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
       html += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
@@ -245,19 +239,21 @@ function renderUserTable(users, container, showExpiryOnly) {
     container.innerHTML = '<p class="msg">No hay usuarios registrados</p>';
     return;
   }
-  // Input de filtro
   let html = '<div class="filter-row" style="margin-bottom:15px;">';
   html += '<input type="text" id="user-filter-input" placeholder="🔍 Filtrar por documento o nombre..." style="flex:1;max-width:400px;">';
   html += '</div>';
   html += '<div class="table-wrapper">';
   html += '<table class="data-table" id="users-data-table"><thead><tr>';
-  html += '<th>Nombre</th><th>Documento</th><th>Empresa</th><th>Progreso</th><th>Certificado</th><th>Acciones</th>';
+  html += '<th>Nombre</th><th>Documento</th><th>Empresa</th><th>Progreso</th><th>Datos Aceptados</th><th>Certificado</th><th>Acciones</th>';
   html += '</tr></thead><tbody>';
 
   users.forEach(u => {
     const certStatus = u.certificate_issued 
       ? '<span class="badge-success">✓ Emitido</span>' 
       : '<span class="badge-pending">Pendiente</span>';
+    const dataStatus = u.data_accepted
+      ? '<span class="badge-success">✓ Sí</span>'
+      : '<span class="badge-pending">No</span>';
     const expiryText = u.certificate_expiry ? new Date(u.certificate_expiry).toLocaleDateString('es-CO') : '-';
 
     html += '<tr>';
@@ -265,6 +261,7 @@ function renderUserTable(users, container, showExpiryOnly) {
     html += '<td>' + escapeHtml(u.document) + '</td>';
     html += '<td>' + escapeHtml(u.company || '-') + '</td>';
     html += '<td>' + (u.progress || 0) + '% (' + (u.completed_modules || 0) + '/' + (u.total_modules || 6) + ')</td>';
+    html += '<td>' + dataStatus + '</td>';
     html += '<td>' + certStatus + '<br><small>' + expiryText + '</small></td>';
     html += '<td>';
     if (u.certificate_issued) {
@@ -278,7 +275,6 @@ function renderUserTable(users, container, showExpiryOnly) {
   html += '</div>';
   container.innerHTML = html;
 
-  // Filtro en tiempo real
   const filterInput = document.getElementById('user-filter-input');
   if (filterInput) {
     filterInput.addEventListener('input', function() {
@@ -309,8 +305,6 @@ function renderUserTable(users, container, showExpiryOnly) {
     btn.addEventListener('click', function() { deleteUser(this.getAttribute('data-user-id'), this.getAttribute('data-user-name')); });
   });
 }
-
-
 
 function escapeHtml(text) {
   if (!text) return '';
@@ -355,60 +349,114 @@ function closeCertModal() {
   currentCertUser = null;
 }
 
+// ============================================
+// DESCARGA CERTIFICADO ADMIN - VERSIÓN CORREGIDA
+// ============================================
 function downloadAdminCertificate() {
-  const element = document.getElementById('admin-cert-card');
-  if (!element) return;
+  const original = document.getElementById('admin-cert-card');
+  if (!original) return;
+
   const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
 
-  const modal = document.getElementById('cert-modal');
-  const wasHidden = modal ? modal.classList.contains('hidden') : false;
+  // Clonar para captura limpia
+  const clone = original.cloneNode(true);
+  clone.id = 'admin-cert-clone-pdf';
 
-  // Hacer visible temporalmente para que html2canvas pueda renderizarlo
-  if (modal && wasHidden) {
-    modal.classList.remove('hidden');
-    modal.style.position = 'absolute';
-    modal.style.left = '-9999px';
-    modal.style.top = '0';
-  }
+  // Estilos inline forzados para A4 landscape exacto
+  clone.style.cssText = '';
+  clone.style.position = 'fixed';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.width = '297mm';
+  clone.style.height = '210mm';
+  clone.style.maxWidth = 'none';
+  clone.style.minWidth = '297mm';
+  clone.style.maxHeight = '210mm';
+  clone.style.minHeight = '210mm';
+  clone.style.margin = '0';
+  clone.style.padding = '30px 40px';
+  clone.style.background = '#ffffff';
+  clone.style.border = '3px solid #003366';
+  clone.style.borderRadius = '12px';
+  clone.style.boxSizing = 'border-box';
+  clone.style.display = 'block';
+  clone.style.overflow = 'hidden';
+  clone.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+  clone.style.textAlign = 'center';
 
-  // Forzar dimensiones exactas A4 para captura
-  const originalWidth = element.style.width;
-  const originalMaxWidth = element.style.maxWidth;
-  element.style.width = '297mm';
-  element.style.maxWidth = 'none';
+  const certHeader = clone.querySelector('.cert-header');
+  if (certHeader) certHeader.style.cssText = 'text-align:center; margin-bottom:15px;';
+
+  const certLogo = clone.querySelector('.cert-logo');
+  if (certLogo) certLogo.style.cssText = 'max-height:55px; display:inline-block;';
+
+  const certBody = clone.querySelector('.cert-body');
+  if (certBody) certBody.style.cssText = 'text-align:center; padding:10px 0;';
+
+  const h2 = clone.querySelector('.cert-body h2');
+  if (h2) h2.style.cssText = 'color:#c41e3a; font-size:1.6rem; margin:8px 0 6px 0; text-transform:uppercase; letter-spacing:3px; font-weight:700;';
+
+  const h3 = clone.querySelector('.cert-body h3');
+  if (h3) h3.style.cssText = 'color:#003366; font-size:1rem; margin:0 0 25px 0; font-weight:500;';
+
+  const labels = clone.querySelectorAll('.cert-label');
+  labels.forEach(lbl => {
+    lbl.style.cssText = 'color:#666; font-size:0.75rem; text-transform:uppercase; letter-spacing:1.5px; margin:18px 0 4px 0; display:block;';
+  });
+
+  const cName = clone.querySelector('.cert-name');
+  if (cName) cName.style.cssText = 'font-size:1.4rem; font-weight:700; color:#003366; margin:4px 0 8px 0; display:block;';
+
+  const cDoc = clone.querySelector('.cert-document');
+  if (cDoc) cDoc.style.cssText = 'font-size:1.1rem; color:#333; font-weight:600; margin:4px 0 15px 0; display:block;';
+
+  const cText = clone.querySelector('.cert-text');
+  if (cText) cText.style.cssText = 'color:#555; font-size:0.85rem; max-width:600px; margin:0 auto 15px auto; line-height:1.4; display:block;';
+
+  const cExpiry = clone.querySelector('.cert-expiry');
+  if (cExpiry) cExpiry.style.cssText = 'font-size:1.15rem; font-weight:700; color:#00a8b5; margin:4px 0 8px 0; display:block;';
+
+  const cDate = clone.querySelector('.cert-date');
+  if (cDate) cDate.style.cssText = 'color:#666; font-size:0.8rem; margin-top:10px; display:block;';
+
+  const certFooter = clone.querySelector('.cert-footer');
+  if (certFooter) certFooter.style.cssText = 'margin-top:auto; padding-top:20px;';
+
+  const certStripe = clone.querySelector('.cert-stripe');
+  if (certStripe) certStripe.style.cssText = 'height:8px; background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5); border-radius:4px; display:block;';
+
+  document.body.appendChild(clone);
 
   const opt = {
     margin: 0,
     filename: 'Certificado_Litoplas_' + doc + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
-      scale: 2, 
-      useCORS: true, 
+      scale: 2,
+      useCORS: true,
       logging: false,
       width: 1123,
-      height: 794
+      height: 794,
+      windowWidth: 1123,
+      windowHeight: 794,
+      x: 0,
+      y: 0,
+      scrollX: 0,
+      scrollY: 0
     },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    jsPDF: { 
+      unit: 'mm', 
+      format: 'a4', 
+      orientation: 'landscape',
+      compress: true
+    }
   };
 
-  html2pdf().set(opt).from(element).save().then(function() {
-    element.style.width = originalWidth;
-    element.style.maxWidth = originalMaxWidth;
-    if (modal && wasHidden) {
-      modal.classList.add('hidden');
-      modal.style.position = '';
-      modal.style.left = '';
-      modal.style.top = '';
-    }
-  }).catch(function() {
-    element.style.width = originalWidth;
-    element.style.maxWidth = originalMaxWidth;
-    if (modal && wasHidden) {
-      modal.classList.add('hidden');
-      modal.style.position = '';
-      modal.style.left = '';
-      modal.style.top = '';
-    }
+  html2pdf().set(opt).from(clone).save().then(function() {
+    if (clone.parentNode) clone.parentNode.removeChild(clone);
+  }).catch(function(err) {
+    console.error('Error generando PDF:', err);
+    if (clone.parentNode) clone.parentNode.removeChild(clone);
   });
 }
 
@@ -488,7 +536,6 @@ function renderModulesAdmin() {
     html += '<label>Descripción</label>';
     html += '<textarea class="mod-desc" rows="2">' + escapeHtml(mod.description || '') + '</textarea>';
 
-    // Videos del módulo
     html += '<div class="module-videos-section">';
     html += '<label>Videos de YouTube</label>';
     html += '<div class="videos-list" data-module-index="' + idx + '">';
@@ -510,7 +557,6 @@ function renderModulesAdmin() {
     html += '<label>Activo</label>';
     html += '<select class="mod-active"><option value="1" ' + (mod.active !== false ? 'selected' : '') + '>Sí</option><option value="0" ' + (mod.active === false ? 'selected' : '') + '>No</option></select>';
 
-    // Preguntas
     html += '<div class="questions-section">';
     html += '<h5>📝 Preguntas del Módulo</h5>';
     html += '<div class="questions-list" data-module-id="' + mod.id + '">';
@@ -531,7 +577,6 @@ function renderModulesAdmin() {
   html += '<button id="btn-add-module" class="btn-primary" style="margin-top:20px;">+ Agregar Nuevo Módulo</button>';
   modulesAdminContainer.innerHTML = html;
 
-  // Event listeners
   document.querySelectorAll('.btn-add-video').forEach(btn => {
     btn.addEventListener('click', function() {
       addVideoInput(parseInt(this.getAttribute('data-index')));
@@ -567,7 +612,6 @@ function addVideoInput(moduleIndex) {
   const input = row.querySelector('.mod-video-url');
   const status = row.querySelector('.video-status');
 
-  // Validación en tiempo real
   input.addEventListener('blur', function() {
     const url = this.value.trim();
     if (!url) { status.textContent = ''; status.className = 'video-status'; return; }
@@ -609,7 +653,6 @@ function renderQuestionEditor(moduleId, qidx, q) {
 
   html += '<input type="text" class="q-text-input" placeholder="Texto de la pregunta" value="' + escapeHtml(q.question_text || '') + '">';
 
-  // Video y documento de la pregunta
   html += '<div class="question-media">';
   html += '<label>Video de la pregunta (YouTube URL)</label>';
   html += '<div class="video-input-row">';
@@ -621,7 +664,6 @@ function renderQuestionEditor(moduleId, qidx, q) {
   html += '<input type="text" class="q-document" placeholder="https://.../doc.pdf" value="' + escapeHtml(q.document_url || '') + '">';
   html += '</div>';
 
-  // Configuración de opciones
   html += '<div class="question-config">';
   html += '<label>Número de opciones</label>';
   html += '<select class="q-num-options">';
@@ -663,7 +705,6 @@ function addQuestionEditor(moduleId) {
     btn.removeEventListener('click', handleRemoveQuestion);
     btn.addEventListener('click', handleRemoveQuestion);
   });
-  // Validación en tiempo real para videos de preguntas
   const newQVideo = list.lastElementChild?.querySelector('.q-video');
   if (newQVideo) {
     newQVideo.addEventListener('blur', function() {
@@ -722,7 +763,6 @@ function addNewModule() {
   });
   adminQuestionsData['new_' + Date.now()] = [];
   renderModulesAdmin();
-  // Scroll al nuevo módulo
   setTimeout(() => {
     const items = document.querySelectorAll('.module-admin-item');
     if (items[items.length - 1]) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });
