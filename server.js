@@ -189,8 +189,8 @@ async function initDB() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);
-      await pool.query(`
+      awa
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);it pool.query(`
         CREATE TABLE IF NOT EXISTS modules (
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
