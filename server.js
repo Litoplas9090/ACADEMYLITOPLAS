@@ -45,14 +45,14 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       imgSrc: ["'self'", "data:", "blob:", "https://i.ytimg.com", "https://img.youtube.com"],
       connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
-      childSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
+      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
+      childSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -114,14 +114,18 @@ async function initDB() {
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'questions' AND column_name = 'num_options'
       `);
+      const checkOrderNum = await pool.query(`
+        SELECT column_name FROM information_schema.columns 
+        WHERE table_name = 'questions' AND column_name = 'order_num'
+      `);
       const checkModuleVideos = await pool.query(`
         SELECT table_name FROM information_schema.tables 
         WHERE table_name = 'module_videos'
       `);
 
       if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0 || 
-          checkNumOptions.rows.length === 0 || checkModuleVideos.rows.length === 0) {
-        console.log('⚠️ Esquema incompleto. Recreando TODAS las tablas...');
+          checkNumOptions.rows.length === 0 || checkOrderNum.rows.length === 0 || checkModuleVideos.rows.length === 0) {
+        console.log('⚠️ Esquema incompleto o desactualizado. Recreando TODAS las tablas...');
         await pool.query('DROP TABLE IF EXISTS user_progress CASCADE');
         await pool.query('DROP TABLE IF EXISTS questions CASCADE');
         await pool.query('DROP TABLE IF EXISTS module_videos CASCADE');
