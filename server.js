@@ -1,8 +1,4 @@
-const exp
-      db.run(`ALTER TABLE users ADD COLUMN data_accepted INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) console.log('Nota:', err.message);
-      });
-ress = require('express');
+const express = require('express');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -192,9 +188,8 @@ async function initDB() {
           certificate_expiry TIMESTAMP,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
-      `
+      `);
       await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);
-);
       await pool.query(`
         CREATE TABLE IF NOT EXISTS modules (
           id SERIAL PRIMARY KEY,
@@ -287,6 +282,9 @@ async function initDB() {
         certificate_expiry TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )`);
+      db.run(`ALTER TABLE users ADD COLUMN data_accepted INTEGER DEFAULT 0`, (err) => {
+        if (err && !err.message.includes('duplicate column')) console.log('Nota:', err.message);
+      });
       db.run(`CREATE TABLE IF NOT EXISTS modules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
