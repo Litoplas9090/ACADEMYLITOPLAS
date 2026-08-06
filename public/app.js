@@ -555,6 +555,17 @@ function renderModuleNav() {
   });
 }
 
+
+// Traducir título/descripción de módulo por defecto
+function translateModuleText(originalText, moduleIndex, type) {
+  if (!originalText || currentLang === 'es') return originalText;
+  var key = 'mod' + (moduleIndex + 1) + '_' + type;
+  if (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key]) {
+    return TRANSLATIONS[currentLang][key];
+  }
+  return originalText;
+}
+
 function renderActiveModule() {
   activeModule.innerHTML = '';
   quizSection.innerHTML = '';
