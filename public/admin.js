@@ -360,11 +360,17 @@ function downloadAdminCertificate() {
   if (!element) return;
   const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
 
-  // Guardar estilos originales y forzar dimensiones A4 exactas para captura
-  const originalMaxWidth = element.style.maxWidth;
-  const originalWidth = element.style.width;
-  element.style.maxWidth = 'none';
-  element.style.width = '297mm';
+  // Clonar el certificado en un elemento temporal fuera del flujo
+  const clone = element.cloneNode(true);
+  clone.style.position = 'fixed';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.width = '297mm';
+  clone.style.height = '210mm';
+  clone.style.maxWidth = 'none';
+  clone.style.margin = '0';
+  clone.style.padding = '18px 28px';
+  document.body.appendChild(clone);
 
   const opt = {
     margin: 0,
@@ -380,12 +386,10 @@ function downloadAdminCertificate() {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
 
-  html2pdf().set(opt).from(element).save().then(function() {
-    element.style.maxWidth = originalMaxWidth;
-    element.style.width = originalWidth;
+  html2pdf().set(opt).from(clone).save().then(function() {
+    document.body.removeChild(clone);
   }).catch(function() {
-    element.style.maxWidth = originalMaxWidth;
-    element.style.width = originalWidth;
+    document.body.removeChild(clone);
   });
 }
 

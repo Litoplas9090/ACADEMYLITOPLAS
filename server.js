@@ -61,7 +61,7 @@ app.use(helmet({
 }));
 
 app.use((req, res, next) => {
-  res.setHeader('Permissions-Policy', 'compute-pressure=(self), accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
+  res.setHeader('Permissions-Policy', 'compute-pressure=(), accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()');
   next();
 });
 app.use(express.json());

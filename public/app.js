@@ -342,7 +342,7 @@ async function doLogin() {
     loginMsg.className = 'msg error';
     return;
   }
-  btnLogin.textContent = 'Ingresando...';
+  btnLogin.textContent = "Ingresando...";
   btnLogin.disabled = true;
   loginMsg.textContent = '';
 
@@ -372,7 +372,7 @@ async function doLogin() {
     loginMsg.textContent = t("error_conn");
     loginMsg.className = 'msg error';
   } finally {
-    btnLogin.textContent = 'Ingresar';
+    btnLogin.textContent = t("btn_login");
     btnLogin.disabled = false;
   }
 }
@@ -405,7 +405,7 @@ async function doRegister() {
     return;
   }
 
-  btnRegister.textContent = 'Registrando...';
+  btnRegister.textContent = "Registrando...";
   btnRegister.disabled = true;
   registerMsg.textContent = '';
 
@@ -435,7 +435,7 @@ async function doRegister() {
     registerMsg.textContent = t("error_conn");
     registerMsg.className = 'msg error';
   } finally {
-    btnRegister.textContent = 'Crear Cuenta';
+    btnRegister.textContent = t("btn_register");
     btnRegister.disabled = false;
   }
 }
@@ -534,7 +534,7 @@ function renderActiveModule() {
   card.className = 'module-active-card';
 
   let html = '<div class="module-active-header">';
-  html += '<span class="module-active-number">Módulo ' + (currentModuleIndex + 1) + '</span>';
+  html += '<span class="module-active-number">' + (currentLang === "en" ? "Module" : currentLang === "pt" ? "Módulo" : "Módulo") + ' ' + (currentModuleIndex + 1) + '</span>';
   html += '<h2>' + escapeHtml(mod.title) + '</h2>';
   html += '</div>';
   html += '<p class="module-active-desc">' + escapeHtml(mod.description || '') + '</p>';
@@ -631,9 +631,9 @@ async function loadQuiz(moduleId) {
         html += '<div class="video-fallback hidden">';
         html += '<p>' + t("video_fallback") + '</p>';
         if (qVideoId) {
-          html += '<a href="https://www.youtube.com/watch?v=' + qVideoId + '" target="_blank" class="btn-doc">▶️ Ver en YouTube</a>';
+          html += '<a href="https://www.youtube.com/watch?v=' + qVideoId + '" target="_blank" class="btn-doc">' + t("video_youtube") + '</a>';
         }
-        html += '<p class="q-hint">Si el video no carga, el dueño puede haber desactivado la reproducción incrustada.</p>';
+        html += '<p class="q-hint">' + t("video_hint") + '</p>';
         html += '</div>';
         html += '</div>';
       }
@@ -682,7 +682,7 @@ async function loadQuiz(moduleId) {
     });
 
   } catch (err) {
-    quizSection.innerHTML = '<p class="msg error">Error cargando cuestionario</p>';
+    quizSection.innerHTML = '<p class="msg error">' + t("error_conn") + '</p>';
   }
 }
 
@@ -800,11 +800,18 @@ function downloadCertificatePDF() {
   const element = document.getElementById('certificate-card');
   if (!element) return;
 
-  // Guardar estilos originales y forzar dimensiones A4 exactas para captura
-  const originalMaxWidth = element.style.maxWidth;
-  const originalWidth = element.style.width;
-  element.style.maxWidth = 'none';
-  element.style.width = '297mm';
+  // Clonar el certificado en un elemento temporal fuera del flujo
+  // para evitar que el contenedor padre limite las dimensiones
+  const clone = element.cloneNode(true);
+  clone.style.position = 'fixed';
+  clone.style.left = '-9999px';
+  clone.style.top = '0';
+  clone.style.width = '297mm';
+  clone.style.height = '210mm';
+  clone.style.maxWidth = 'none';
+  clone.style.margin = '0';
+  clone.style.padding = '18px 28px';
+  document.body.appendChild(clone);
 
   const opt = {
     margin: 0,
@@ -820,12 +827,10 @@ function downloadCertificatePDF() {
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
 
-  html2pdf().set(opt).from(element).save().then(function() {
-    element.style.maxWidth = originalMaxWidth;
-    element.style.width = originalWidth;
+  html2pdf().set(opt).from(clone).save().then(function() {
+    document.body.removeChild(clone);
   }).catch(function() {
-    element.style.maxWidth = originalMaxWidth;
-    element.style.width = originalWidth;
+    document.body.removeChild(clone);
   });
 }
 
