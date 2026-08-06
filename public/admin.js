@@ -331,7 +331,7 @@ function openCertificateModal(userId, userName, userDoc, expiry) {
         <img src="images/logo-litoplas.png" alt="Litoplas" class="cert-logo" onerror="this.style.display='none'">
       </div>
       <div class="cert-body">
-        <h2>Certificado de Finalización</h2>
+        <h2 style="text-transform:uppercase;letter-spacing:3px;">CERTIFICADO</h2>
         <h3>Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
         <p class="cert-label">Otorgado a</p>
         <p class="cert-name">${escapeHtml(userName)}</p>
@@ -359,15 +359,34 @@ function downloadAdminCertificate() {
   const element = document.getElementById('admin-cert-card');
   if (!element) return;
   const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
+
+  // Guardar estilos originales y forzar dimensiones A4 exactas para captura
+  const originalMaxWidth = element.style.maxWidth;
+  const originalWidth = element.style.width;
+  element.style.maxWidth = 'none';
+  element.style.width = '297mm';
+
   const opt = {
     margin: 0,
     filename: 'Certificado_Litoplas_' + doc + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-    pagebreak: { mode: ['avoid-all', 'css'], before: '#cert-end-marker' }
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      width: 1123,
+      height: 794
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
-  html2pdf().set(opt).from(element).save();
+
+  html2pdf().set(opt).from(element).save().then(function() {
+    element.style.maxWidth = originalMaxWidth;
+    element.style.width = originalWidth;
+  }).catch(function() {
+    element.style.maxWidth = originalMaxWidth;
+    element.style.width = originalWidth;
+  });
 }
 
 async function resetPassword(userId) {

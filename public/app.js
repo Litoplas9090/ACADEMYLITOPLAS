@@ -36,7 +36,7 @@ const TRANSLATIONS = {
     btn_next: "Continuar al siguiente módulo →",
     btn_cert: "🏆 Ver Certificado",
     btn_start_quiz: "Responder Cuestionario para continuar",
-    cert_title: "Certificado de Finalización",
+    cert_title: "CERTIFICADO",
     cert_subtitle: "Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial",
     cert_to: "Otorgado a",
     cert_doc: "Documento",
@@ -86,7 +86,7 @@ const TRANSLATIONS = {
     btn_next: "Continue to next module →",
     btn_cert: "🏆 View Certificate",
     btn_start_quiz: "Answer Quiz to continue",
-    cert_title: "Certificate of Completion",
+    cert_title: "CERTIFICATE",
     cert_subtitle: "Litoplas S.A. - Risk Management and Industrial Safety",
     cert_to: "Awarded to",
     cert_doc: "Document",
@@ -136,7 +136,7 @@ const TRANSLATIONS = {
     btn_next: "Continuar para o próximo módulo →",
     btn_cert: "🏆 Ver Certificado",
     btn_start_quiz: "Responder Questionário para continuar",
-    cert_title: "Certificado de Conclusão",
+    cert_title: "CERTIFICADO",
     cert_subtitle: "Litoplas S.A. - Gestão de Riscos e Segurança Industrial",
     cert_to: "Concedido a",
     cert_doc: "Documento",
@@ -471,6 +471,13 @@ async function loadCourseData() {
     ]);
     allModules = await modRes.json();
     userProgress = await progRes.json();
+
+    // Forzar secuencialidad: siempre empezar en el primer módulo no completado
+    const lastCompleted = getLastCompletedIndex();
+    currentModuleIndex = lastCompleted + 1;
+    if (currentModuleIndex >= allModules.length) currentModuleIndex = allModules.length - 1;
+    if (currentModuleIndex < 0) currentModuleIndex = 0;
+
     renderModuleNav();
     renderActiveModule();
   } catch (err) {
@@ -792,15 +799,34 @@ async function showCertificateView(expiryDate) {
 function downloadCertificatePDF() {
   const element = document.getElementById('certificate-card');
   if (!element) return;
+
+  // Guardar estilos originales y forzar dimensiones A4 exactas para captura
+  const originalMaxWidth = element.style.maxWidth;
+  const originalWidth = element.style.width;
+  element.style.maxWidth = 'none';
+  element.style.width = '297mm';
+
   const opt = {
     margin: 0,
     filename: 'Certificado_Litoplas_' + (currentUser?.document || 'usuario') + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true, logging: false },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
-    pagebreak: { mode: ['avoid-all', 'css'], before: '#cert-end-marker' }
+    html2canvas: { 
+      scale: 2, 
+      useCORS: true, 
+      logging: false,
+      width: 1123,
+      height: 794
+    },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
   };
-  html2pdf().set(opt).from(element).save();
+
+  html2pdf().set(opt).from(element).save().then(function() {
+    element.style.maxWidth = originalMaxWidth;
+    element.style.width = originalWidth;
+  }).catch(function() {
+    element.style.maxWidth = originalMaxWidth;
+    element.style.width = originalWidth;
+  });
 }
 
 function escapeHtml(text) {
