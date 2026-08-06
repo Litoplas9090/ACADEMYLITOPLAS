@@ -350,82 +350,128 @@ function closeCertModal() {
 }
 
 // ============================================
-// DESCARGA CERTIFICADO ADMIN - VERSIÓN CORREGIDA
+// DESCARGA CERTIFICADO ADMIN - VERSIÓN FINAL ROBUSTA
 // ============================================
 function downloadAdminCertificate() {
-  const original = document.getElementById('admin-cert-card');
-  if (!original) return;
+  if (!currentCertUser) return;
 
-  const doc = currentCertUser ? currentCertUser.userDoc : 'usuario';
+  const doc = currentCertUser.userDoc || 'usuario';
+  const userName = currentCertUser.userName || '';
+  const expiry = currentCertUser.expiry ? new Date(currentCertUser.expiry) : new Date();
+  if (!currentCertUser.expiry) expiry.setFullYear(expiry.getFullYear() + 1);
+  const now = new Date();
 
-  // Clonar para captura limpia
-  const clone = original.cloneNode(true);
-  clone.id = 'admin-cert-clone-pdf';
+  const expiryText = expiry.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
+  const dateText = 'Fecha de emisión: ' + now.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
 
-  // Estilos inline forzados para A4 landscape exacto
-  clone.style.cssText = '';
-  clone.style.position = 'fixed';
-  clone.style.left = '-9999px';
-  clone.style.top = '0';
-  clone.style.width = '297mm';
-  clone.style.height = '210mm';
-  clone.style.maxWidth = 'none';
-  clone.style.minWidth = '297mm';
-  clone.style.maxHeight = '210mm';
-  clone.style.minHeight = '210mm';
-  clone.style.margin = '0';
-  clone.style.padding = '30px 40px';
-  clone.style.background = '#ffffff';
-  clone.style.border = '3px solid #003366';
-  clone.style.borderRadius = '12px';
-  clone.style.boxSizing = 'border-box';
-  clone.style.display = 'block';
-  clone.style.overflow = 'hidden';
-  clone.style.fontFamily = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
-  clone.style.textAlign = 'center';
+  // Crear HTML completo del certificado con estilos inline absolutos
+  const certHTML = `
+    <div style="
+      width:297mm; 
+      height:210mm; 
+      background:#ffffff; 
+      border:3px solid #003366; 
+      border-radius:12px; 
+      padding:30px 40px; 
+      box-sizing:border-box; 
+      text-align:center; 
+      font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+      position:relative;
+      overflow:hidden;
+    ">
+      <div style="text-align:center; margin-bottom:15px;">
+        <img src="images/logo-litoplas.png" alt="Litoplas" style="max-height:55px; display:inline-block;" onerror="this.style.display='none'">
+      </div>
+      <div style="text-align:center; padding:10px 0;">
+        <h2 style="
+          color:#c41e3a; 
+          font-size:1.6rem; 
+          margin:8px 0 6px 0; 
+          text-transform:uppercase; 
+          letter-spacing:3px; 
+          font-weight:700;
+        ">CERTIFICADO</h2>
+        <h3 style="
+          color:#003366; 
+          font-size:1rem; 
+          margin:0 0 25px 0; 
+          font-weight:500;
+        ">Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
 
-  const certHeader = clone.querySelector('.cert-header');
-  if (certHeader) certHeader.style.cssText = 'text-align:center; margin-bottom:15px;';
+        <p style="
+          color:#666; 
+          font-size:0.75rem; 
+          text-transform:uppercase; 
+          letter-spacing:1.5px; 
+          margin:18px 0 4px 0;
+        ">Otorgado a</p>
+        <p style="
+          font-size:1.4rem; 
+          font-weight:700; 
+          color:#003366; 
+          margin:4px 0 8px 0;
+        ">${escapeHtml(userName)}</p>
 
-  const certLogo = clone.querySelector('.cert-logo');
-  if (certLogo) certLogo.style.cssText = 'max-height:55px; display:inline-block;';
+        <p style="
+          color:#666; 
+          font-size:0.75rem; 
+          text-transform:uppercase; 
+          letter-spacing:1.5px; 
+          margin:18px 0 4px 0;
+        ">Documento</p>
+        <p style="
+          font-size:1.1rem; 
+          color:#333; 
+          font-weight:600; 
+          margin:4px 0 15px 0;
+        ">${escapeHtml(doc)}</p>
 
-  const certBody = clone.querySelector('.cert-body');
-  if (certBody) certBody.style.cssText = 'text-align:center; padding:10px 0;';
+        <p style="
+          color:#555; 
+          font-size:0.85rem; 
+          max-width:600px; 
+          margin:0 auto 15px auto; 
+          line-height:1.4;
+        ">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
 
-  const h2 = clone.querySelector('.cert-body h2');
-  if (h2) h2.style.cssText = 'color:#c41e3a; font-size:1.6rem; margin:8px 0 6px 0; text-transform:uppercase; letter-spacing:3px; font-weight:700;';
+        <p style="
+          color:#666; 
+          font-size:0.75rem; 
+          text-transform:uppercase; 
+          letter-spacing:1.5px; 
+          margin:18px 0 4px 0;
+        ">Vigente hasta</p>
+        <p style="
+          font-size:1.15rem; 
+          font-weight:700; 
+          color:#00a8b5; 
+          margin:4px 0 8px 0;
+        ">${escapeHtml(expiryText)}</p>
 
-  const h3 = clone.querySelector('.cert-body h3');
-  if (h3) h3.style.cssText = 'color:#003366; font-size:1rem; margin:0 0 25px 0; font-weight:500;';
+        <p style="
+          color:#666; 
+          font-size:0.8rem; 
+          margin-top:10px;
+        ">${escapeHtml(dateText)}</p>
+      </div>
+      <div style="margin-top:30px;">
+        <div style="
+          height:8px; 
+          background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5); 
+          border-radius:4px;
+        "></div>
+      </div>
+    </div>
+  `;
 
-  const labels = clone.querySelectorAll('.cert-label');
-  labels.forEach(lbl => {
-    lbl.style.cssText = 'color:#666; font-size:0.75rem; text-transform:uppercase; letter-spacing:1.5px; margin:18px 0 4px 0; display:block;';
-  });
+  // Crear contenedor temporal visible en el DOM
+  const wrapper = document.createElement('div');
+  wrapper.id = 'pdf-admin-cert-wrapper';
+  wrapper.style.cssText = 'position:fixed; left:-9999px; top:0; z-index:-1; overflow:hidden;';
+  wrapper.innerHTML = certHTML;
+  document.body.appendChild(wrapper);
 
-  const cName = clone.querySelector('.cert-name');
-  if (cName) cName.style.cssText = 'font-size:1.4rem; font-weight:700; color:#003366; margin:4px 0 8px 0; display:block;';
-
-  const cDoc = clone.querySelector('.cert-document');
-  if (cDoc) cDoc.style.cssText = 'font-size:1.1rem; color:#333; font-weight:600; margin:4px 0 15px 0; display:block;';
-
-  const cText = clone.querySelector('.cert-text');
-  if (cText) cText.style.cssText = 'color:#555; font-size:0.85rem; max-width:600px; margin:0 auto 15px auto; line-height:1.4; display:block;';
-
-  const cExpiry = clone.querySelector('.cert-expiry');
-  if (cExpiry) cExpiry.style.cssText = 'font-size:1.15rem; font-weight:700; color:#00a8b5; margin:4px 0 8px 0; display:block;';
-
-  const cDate = clone.querySelector('.cert-date');
-  if (cDate) cDate.style.cssText = 'color:#666; font-size:0.8rem; margin-top:10px; display:block;';
-
-  const certFooter = clone.querySelector('.cert-footer');
-  if (certFooter) certFooter.style.cssText = 'margin-top:auto; padding-top:20px;';
-
-  const certStripe = clone.querySelector('.cert-stripe');
-  if (certStripe) certStripe.style.cssText = 'height:8px; background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5); border-radius:4px; display:block;';
-
-  document.body.appendChild(clone);
+  const element = wrapper.firstElementChild;
 
   const opt = {
     margin: 0,
@@ -438,25 +484,20 @@ function downloadAdminCertificate() {
       width: 1123,
       height: 794,
       windowWidth: 1123,
-      windowHeight: 794,
-      x: 0,
-      y: 0,
-      scrollX: 0,
-      scrollY: 0
+      windowHeight: 794
     },
     jsPDF: { 
       unit: 'mm', 
       format: 'a4', 
-      orientation: 'landscape',
-      compress: true
+      orientation: 'landscape'
     }
   };
 
-  html2pdf().set(opt).from(clone).save().then(function() {
-    if (clone.parentNode) clone.parentNode.removeChild(clone);
+  html2pdf().set(opt).from(element).save().then(function() {
+    if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
   }).catch(function(err) {
     console.error('Error generando PDF:', err);
-    if (clone.parentNode) clone.parentNode.removeChild(clone);
+    if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);
   });
 }
 

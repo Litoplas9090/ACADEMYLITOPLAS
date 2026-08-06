@@ -12,46 +12,36 @@
     <header class="header">
       <img src="images/logo-litoplas.png" alt="Litoplas" class="logo" onerror="this.style.display='none'">
       <h1>Litoplas Academy</h1>
-      <p>Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
+      <p data-i18n="subtitle">Capacitación en Seguridad Industrial para Visitantes y Contratistas</p>
+      <div class="lang-selector">
+        <button class="lang-btn active" data-lang="es" title="Español">ES</button>
+        <button class="lang-btn" data-lang="en" title="English">EN</button>
+        <button class="lang-btn" data-lang="pt" title="Português">PT</button>
+      </div>
     </header>
 
     <div id="auth-section" class="auth-section">
       <div class="auth-tabs">
-        <button id="tab-login" class="auth-tab active">Iniciar Sesión</button>
-        <button id="tab-register" class="auth-tab">Registrarse</button>
+        <button id="tab-login" class="auth-tab active" data-i18n="tab_login">Iniciar Sesión</button>
+        <button id="tab-register" class="auth-tab" data-i18n="tab_register">Registrarse</button>
       </div>
 
       <div id="login-form" class="auth-form">
-        <h2>Iniciar Sesión</h2>
+        <h2 data-i18n="login_title">Iniciar Sesión</h2>
         <input type="text" id="login-document" placeholder="Número de Documento" required>
         <input type="password" id="login-password" placeholder="Contraseña" required>
-        <button id="btn-login" class="btn-primary">Ingresar</button>
+        <button id="btn-login" class="btn-primary" data-i18n="btn_login">Ingresar</button>
         <p id="login-msg" class="msg"></p>
       </div>
 
       <div id="register-form" class="auth-form hidden">
-        <h2>Registro de Nuevo Usuario</h2>
+        <h2 data-i18n="register_title">Registro de Nuevo Usuario</h2>
         <input type="text" id="reg-fullname" placeholder="Nombre Completo *" required>
         <input type="text" id="reg-document" placeholder="Número de Documento *" required>
         <input type="text" id="reg-company" placeholder="Empresa / Contratista">
         <input type="password" id="reg-password" placeholder="Contraseña *" required>
         <input type="password" id="reg-password2" placeholder="Confirmar Contraseña *" required>
-
-        <div class="data-consent-box">
-          <label class="data-consent-label">
-            <input type="checkbox" id="reg-data-consent" required>
-            <span class="consent-text">
-              Autorizo de manera libre, previa, expresa e informada a <strong>LITOPLAS S.A.</strong> (NIT 802.009.663-3) para el tratamiento de mis datos personales conforme a la 
-              <a href="privacidad.html" target="_blank">Política de Privacidad y Tratamiento de Datos Personales</a>, 
-              de acuerdo a la <strong>Ley 1581 de 2012</strong> y el <strong>Decreto 1377 de 2013</strong>. 
-              Entiendo que mis datos serán utilizados para: gestión de capacitación en seguridad industrial, emisión de certificados, control de acceso a instalaciones, 
-              cumplimiento legal y notificaciones sobre vigencia del certificado. 
-              Conozco mis derechos de conocer, actualizar, rectificar y suprimir mis datos contactando a <strong>integridad@litoplas.com</strong>.
-            </span>
-          </label>
-        </div>
-
-        <button id="btn-register" class="btn-primary">Crear Cuenta</button>
+        <button id="btn-register" class="btn-primary" data-i18n="btn_register">Crear Cuenta</button>
         <p id="register-msg" class="msg"></p>
       </div>
     </div>
@@ -63,7 +53,7 @@
           <div id="progress-fill" class="progress-fill"></div>
         </div>
         <span id="progress-text">0%</span>
-        <button id="btn-logout" class="btn-secondary">Cerrar Sesión</button>
+        <button id="btn-logout" class="btn-secondary" data-i18n="btn_logout">Cerrar Sesión</button>
       </div>
 
       <div id="course-view" class="course-view">
@@ -73,13 +63,12 @@
       </div>
 
       <div id="certificate-section" class="certificate-section hidden">
-        <!-- Vista en pantalla del certificado -->
         <div id="certificate-card" class="certificate-card">
           <div class="cert-header">
             <img src="images/logo-litoplas.png" alt="Litoplas" class="cert-logo" onerror="this.style.display='none'">
           </div>
           <div class="cert-body">
-            <h2>CERTIFICADO</h2>
+            <h2 style="text-transform:uppercase;letter-spacing:3px;">CERTIFICADO</h2>
             <h3>Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
             <p class="cert-label">Otorgado a</p>
             <p id="cert-name" class="cert-name"></p>
