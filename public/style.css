@@ -439,73 +439,79 @@ body {
   background: white;
   border: 3px solid var(--color-secondary);
   border-radius: 12px;
-  padding: 50px 60px;
-  max-width: 900px;
+  padding: 30px 40px;
+  width: 297mm;
+  height: 210mm;
+  max-width: 100%;
   margin: 0 auto 30px;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-.cert-header { margin-bottom: 20px; }
-.cert-logo { max-height: 70px; }
+.cert-header { margin-bottom: 10px; }
+.cert-logo { max-height: 55px; }
 
 .cert-body h2 {
   color: var(--color-primary);
-  font-size: 2rem;
+  font-size: 1.6rem;
   margin-bottom: 5px;
 }
 
 .cert-body h3 {
   color: var(--color-secondary);
-  font-size: 1.1rem;
-  margin-bottom: 30px;
+  font-size: 1rem;
+  margin-bottom: 15px;
   font-weight: 500;
 }
 
 .cert-label {
   color: var(--color-text-light);
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  margin-top: 20px;
+  margin-top: 10px;
 }
 
 .cert-name {
-  font-size: 1.8rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-secondary);
-  margin: 8px 0;
+  margin: 6px 0;
 }
 
 .cert-document {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   color: var(--color-text);
   font-weight: 600;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .cert-text {
   color: var(--color-text-light);
-  font-size: 1rem;
+  font-size: 0.9rem;
   max-width: 600px;
-  margin: 0 auto 20px;
-  line-height: 1.6;
+  margin: 0 auto 12px;
+  line-height: 1.4;
 }
 
 .cert-expiry {
-  font-size: 1.3rem;
+  font-size: 1.15rem;
   font-weight: 700;
   color: var(--color-accent);
 }
 
 .cert-date {
   color: var(--color-text-light);
-  font-size: 0.9rem;
-  margin-top: 15px;
+  font-size: 0.85rem;
+  margin-top: 10px;
 }
 
-.cert-footer { margin-top: 30px; }
+.cert-footer { margin-top: 15px; }
 
 .cert-stripe {
   height: 8px;
@@ -1040,8 +1046,8 @@ body {
 /* RESPONSIVE */
 @media (max-width: 768px) {
   .header h1 { font-size: 1.5rem; }
-  .certificate-card { padding: 30px 20px; }
-  .cert-name { font-size: 1.4rem; }
+  .certificate-card { padding: 20px 15px; width: auto; height: auto; }
+  .cert-name { font-size: 1.2rem; }
   .user-bar { flex-direction: column; align-items: flex-start; }
   .admin-tabs { flex-direction: column; }
   .search-row { flex-direction: column; }

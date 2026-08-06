@@ -268,7 +268,12 @@ function renderUserTable(users, container, showExpiryOnly) {
     container.innerHTML = '<p class="msg">No hay usuarios registrados</p>';
     return;
   }
-  let html = '<table class="data-table"><thead><tr>';
+  // Input de filtro
+  let html = '<div class="filter-row" style="margin-bottom:15px;">';
+  html += '<input type="text" id="user-filter-input" placeholder="🔍 Filtrar por documento o nombre..." style="flex:1;max-width:400px;">';
+  html += '</div>';
+  html += '<div class="table-wrapper">';
+  html += '<table class="data-table" id="users-data-table"><thead><tr>';
   html += '<th>Nombre</th><th>Documento</th><th>Empresa</th><th>Progreso</th><th>Certificado</th><th>Acciones</th>';
   html += '</tr></thead><tbody>';
 
@@ -293,7 +298,27 @@ function renderUserTable(users, container, showExpiryOnly) {
     html += '</td></tr>';
   });
   html += '</tbody></table>';
+  html += '</div>';
   container.innerHTML = html;
+
+  // Filtro en tiempo real
+  const filterInput = document.getElementById('user-filter-input');
+  if (filterInput) {
+    filterInput.addEventListener('input', function() {
+      const term = this.value.toLowerCase().trim();
+      const rows = document.querySelectorAll('#users-data-table tbody tr');
+      rows.forEach(row => {
+        const name = row.cells[0]?.textContent.toLowerCase() || '';
+        const doc = row.cells[1]?.textContent.toLowerCase() || '';
+        const company = row.cells[2]?.textContent.toLowerCase() || '';
+        if (name.includes(term) || doc.includes(term) || company.includes(term)) {
+          row.style.display = '';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    });
+  }
 
   container.querySelectorAll('.btn-cert').forEach(btn => {
     btn.addEventListener('click', function() {
@@ -386,8 +411,9 @@ function downloadAdminCertificate() {
     margin: 0,
     filename: 'Certificado_Litoplas_' + doc + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['avoid-all', 'css'], before: '#cert-end-marker' }
   };
   html2pdf().set(opt).from(element).save();
 }
@@ -592,7 +618,11 @@ function renderQuestionEditor(moduleId, qidx, q) {
   // Video y documento de la pregunta
   html += '<div class="question-media">';
   html += '<label>Video de la pregunta (YouTube URL)</label>';
-  html += '<input type="text" class="q-video" placeholder="https://www.youtube.com/watch?v=..." value="' + escapeHtml(q.video_url || '') + '">';
+  html += '<div class="video-input-row">';
+  html += '<input type="text" class="q-video" placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..." value="' + escapeHtml(q.video_url || '') + '">';
+  const qVidValid = (q.video_url || '') && /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/|music\.youtube\.com)/.test(q.video_url || '');
+  html += '<span class="video-status ' + (qVidValid ? 'valid' : ((q.video_url || '') ? 'invalid' : '')) + '">' + (qVidValid ? ' ✓ Válida' : ((q.video_url || '') ? ' ✗ Revisar' : '')) + '</span>';
+  html += '</div>';
   html += '<label>Documento de la pregunta (URL)</label>';
   html += '<input type="text" class="q-document" placeholder="https://.../doc.pdf" value="' + escapeHtml(q.document_url || '') + '">';
   html += '</div>';
@@ -639,6 +669,20 @@ function addQuestionEditor(moduleId) {
     btn.removeEventListener('click', handleRemoveQuestion);
     btn.addEventListener('click', handleRemoveQuestion);
   });
+  // Validación en tiempo real para videos de preguntas
+  const newQVideo = list.lastElementChild?.querySelector('.q-video');
+  if (newQVideo) {
+    newQVideo.addEventListener('blur', function() {
+      const url = this.value.trim();
+      const statusEl = this.parentElement.querySelector('.video-status');
+      if (!url) { if (statusEl) { statusEl.textContent = ''; statusEl.className = 'video-status'; } return; }
+      const isValid = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/|music\.youtube\.com)/.test(url);
+      if (statusEl) {
+        statusEl.textContent = isValid ? ' ✓ URL válida' : ' ✗ URL no reconocida';
+        statusEl.className = 'video-status ' + (isValid ? 'valid' : 'invalid');
+      }
+    });
+  }
 }
 
 function handleRemoveQuestion() {

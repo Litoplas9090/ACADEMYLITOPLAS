@@ -10,6 +10,37 @@ let allModules = [];
 let userProgress = [];
 let currentModuleIndex = 0;
 
+// Helper: convertir URL de YouTube a embed (fallback si backend no lo hizo)
+function toYouTubeEmbedClient(url) {
+  if (!url) return '';
+  if (url.includes('youtube-nocookie.com/embed/')) return url;
+  if (url.includes('youtube.com/embed/')) {
+    const m = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (m) return 'https://www.youtube-nocookie.com/embed/' + m[1] + '?rel=0&modestbranding=1';
+  }
+  let vid = '';
+  const wm = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+  if (wm) vid = wm[1];
+  if (!vid) {
+    const sm = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+    if (sm) vid = sm[1];
+  }
+  if (!vid) {
+    const ssm = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (ssm) vid = ssm[1];
+  }
+  if (!vid) {
+    const lm = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
+    if (lm) vid = lm[1];
+  }
+  if (vid) return 'https://www.youtube-nocookie.com/embed/' + vid + '?rel=0&modestbranding=1';
+  return url;
+}
+
+function isValidYouTubeEmbed(url) {
+  return url && url.includes('youtube-nocookie.com/embed/') && /embed\/([a-zA-Z0-9_-]{11})/.test(url);
+}
+
 const authSection = document.getElementById('auth-section');
 const loginForm = document.getElementById('login-form');
 const registerForm = document.getElementById('register-form');
@@ -374,11 +405,15 @@ async function loadQuiz(moduleId) {
       html += '<p class="q-text"><strong>' + (idx + 1) + '.</strong> ' + escapeHtml(q.question_text) + '</p>';
 
       // Video de la pregunta con fallback
-      if (q.video_url) {
-        const qVideoId = q.video_url.match(/embed\/([a-zA-Z0-9_-]{11})/)?.[1] || '';
+      let qVideoUrl = q.video_url || '';
+      if (qVideoUrl && !isValidYouTubeEmbed(qVideoUrl)) {
+        qVideoUrl = toYouTubeEmbedClient(qVideoUrl);
+      }
+      if (qVideoUrl) {
+        const qVideoId = qVideoUrl.match(/embed\/([a-zA-Z0-9_-]{11})/)?.[1] || '';
         html += '<div class="video-wrapper">';
         html += '<div class="question-video-container">';
-        html += '<iframe src="' + escapeHtml(q.video_url) + '" frameborder="0" allowfullscreen loading="lazy"></iframe>';
+        html += '<iframe src="' + escapeHtml(qVideoUrl) + '" frameborder="0" allowfullscreen loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>';
         html += '</div>';
         html += '<div class="video-fallback hidden">';
         html += '<p>⚠️ No se puede reproducir este video incrustado.</p>';
@@ -555,8 +590,9 @@ function downloadCertificatePDF() {
     margin: 0,
     filename: 'Certificado_Litoplas_' + (currentUser?.document || 'usuario') + '.pdf',
     image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, useCORS: true },
-    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' },
+    pagebreak: { mode: ['avoid-all', 'css'], before: '#cert-end-marker' }
   };
   html2pdf().set(opt).from(element).save();
 }
