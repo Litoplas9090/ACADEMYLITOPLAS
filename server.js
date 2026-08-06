@@ -189,8 +189,7 @@ async function initDB() {
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
-      awa
-      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);it pool.query(`
+      await pool.query(`
         CREATE TABLE IF NOT EXISTS modules (
           id SERIAL PRIMARY KEY,
           title VARCHAR(255) NOT NULL,
@@ -282,9 +281,6 @@ async function initDB() {
         certificate_expiry TEXT,
         created_at TEXT DEFAULT CURRENT_TIMESTAMP
       )`);
-      db.run(`ALTER TABLE users ADD COLUMN data_accepted INTEGER DEFAULT 0`, (err) => {
-        if (err && !err.message.includes('duplicate column')) console.log('Nota:', err.message);
-      });
       db.run(`CREATE TABLE IF NOT EXISTS modules (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -344,6 +340,19 @@ async function initDB() {
       });
       console.log('✅ Base de datos SQLite inicializada');
     });
+  }
+
+  // Migración: agregar columna data_accepted si no existe
+  try {
+    if (dbType === 'postgres') {
+      await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS data_accepted BOOLEAN DEFAULT FALSE`);
+    } else {
+      db.run(`ALTER TABLE users ADD COLUMN data_accepted INTEGER DEFAULT 0`, (err) => {
+        if (err && !err.message.includes('duplicate column')) console.log('Nota:', err.message);
+      });
+    }
+  } catch (e) {
+    console.log('Nota migración:', e.message);
   }
 }
 
