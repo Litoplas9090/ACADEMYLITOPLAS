@@ -200,18 +200,6 @@ async function doRegister() {
     registerMsg.className = 'msg error';
     return;
   }
-  if (!regDataConsent || !regDataConsent.checked) {
-    registerMsg.textContent = 'Debes aceptar la Política de Privacidad y Tratamiento de Datos Personales para continuar. Lee el documento y marca la casilla de autorización.';
-    registerMsg.className = 'msg error';
-    if (regDataConsent) {
-      regDataConsent.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      regDataConsent.parentElement.classList.add('consent-highlight');
-      setTimeout(() => {
-        if (regDataConsent.parentElement) regDataConsent.parentElement.classList.remove('consent-highlight');
-      }, 3000);
-    }
-    return;
-  }
   if (!dataConsent) {
     registerMsg.textContent = 'Debes aceptar la Política de Privacidad y Tratamiento de Datos Personales para continuar. Lee el documento y marca la casilla de autorización.';
     registerMsg.className = 'msg error';
@@ -629,125 +617,124 @@ function downloadCertificatePDF() {
   const expiryText = certExpiry ? certExpiry.textContent : '';
   const dateText = certDate ? certDate.textContent : '';
 
+  // HTML del certificado: contenedor de página exacto A4 landscape con centrado flex
   const certHTML = `
-    <div style="
+    <div id="cert-page" style="
       width:297mm;
       height:210mm;
       background:#ffffff;
       box-sizing:border-box;
-      display:table;
+      padding:10mm 12mm;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
       overflow:hidden;
     ">
       <div style="
-        display:table-cell;
-        vertical-align:middle;
+        width:100%;
+        max-height:100%;
+        padding:14px 24px;
+        box-sizing:border-box;
+        border:3px solid #003366;
+        border-radius:12px;
+        background:#ffffff;
         text-align:center;
-        padding:8mm 12mm;
+        font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
       ">
-        <div style="
-          width:100%;
-          padding:18px 30px;
-          box-sizing:border-box;
-          border:3px solid #003366;
-          border-radius:12px;
-          background:#ffffff;
-          text-align:center;
-          font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
-        ">
-          <div style="text-align:center; margin-bottom:12px;">
-            <img src="images/logo-litoplas.png" alt="Litoplas" style="max-height:55px; display:inline-block;" onerror="this.style.display='none'">
-          </div>
-          <div style="text-align:center; padding:6px 0;">
-            <h2 style="
-              color:#c41e3a;
-              font-size:1.6rem;
-              margin:6px 0 6px 0;
-              text-transform:uppercase;
-              letter-spacing:3px;
-              font-weight:700;
-            ">CERTIFICADO</h2>
-            <h3 style="
-              color:#003366;
-              font-size:1rem;
-              margin:0 0 20px 0;
-              font-weight:500;
-            ">Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
+        <div style="text-align:center; margin-bottom:10px;">
+          <img src="images/logo-litoplas.png" alt="Litoplas" style="max-height:50px; display:inline-block;" onerror="this.style.display='none'">
+        </div>
+        <div style="text-align:center; padding:4px 0;">
+          <h2 style="
+            color:#c41e3a;
+            font-size:1.5rem;
+            margin:4px 0 4px 0;
+            text-transform:uppercase;
+            letter-spacing:3px;
+            font-weight:700;
+          ">CERTIFICADO</h2>
+          <h3 style="
+            color:#003366;
+            font-size:0.95rem;
+            margin:0 0 16px 0;
+            font-weight:500;
+          ">Litoplas S.A. - Gestión de Riesgos y Seguridad Industrial</h3>
 
-            <p style="
-              color:#666;
-              font-size:0.75rem;
-              text-transform:uppercase;
-              letter-spacing:1.5px;
-              margin:14px 0 4px 0;
-            ">Otorgado a</p>
-            <p style="
-              font-size:1.4rem;
-              font-weight:700;
-              color:#003366;
-              margin:4px 0 6px 0;
-            ">${escapeHtml(nameText)}</p>
+          <p style="
+            color:#666;
+            font-size:0.7rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
+            margin:10px 0 3px 0;
+          ">Otorgado a</p>
+          <p style="
+            font-size:1.3rem;
+            font-weight:700;
+            color:#003366;
+            margin:3px 0 4px 0;
+          ">${escapeHtml(nameText)}</p>
 
-            <p style="
-              color:#666;
-              font-size:0.75rem;
-              text-transform:uppercase;
-              letter-spacing:1.5px;
-              margin:14px 0 4px 0;
-            ">Documento</p>
-            <p style="
-              font-size:1.1rem;
-              color:#333;
-              font-weight:600;
-              margin:4px 0 12px 0;
-            ">${escapeHtml(docText)}</p>
+          <p style="
+            color:#666;
+            font-size:0.7rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
+            margin:10px 0 3px 0;
+          ">Documento</p>
+          <p style="
+            font-size:1rem;
+            color:#333;
+            font-weight:600;
+            margin:3px 0 10px 0;
+          ">${escapeHtml(docText)}</p>
 
-            <p style="
-              color:#555;
-              font-size:0.85rem;
-              max-width:600px;
-              margin:0 auto 12px auto;
-              line-height:1.4;
-            ">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
+          <p style="
+            color:#555;
+            font-size:0.8rem;
+            max-width:560px;
+            margin:0 auto 10px auto;
+            line-height:1.4;
+          ">Por completar satisfactoriamente el programa de inducción en seguridad industrial para visitantes y contratistas, conforme a los estándares de Litoplas S.A.</p>
 
-            <p style="
-              color:#666;
-              font-size:0.75rem;
-              text-transform:uppercase;
-              letter-spacing:1.5px;
-              margin:14px 0 4px 0;
-            ">Vigente hasta</p>
-            <p style="
-              font-size:1.15rem;
-              font-weight:700;
-              color:#00a8b5;
-              margin:4px 0 6px 0;
-            ">${escapeHtml(expiryText)}</p>
+          <p style="
+            color:#666;
+            font-size:0.7rem;
+            text-transform:uppercase;
+            letter-spacing:1.5px;
+            margin:10px 0 3px 0;
+          ">Vigente hasta</p>
+          <p style="
+            font-size:1.05rem;
+            font-weight:700;
+            color:#00a8b5;
+            margin:3px 0 4px 0;
+          ">${escapeHtml(expiryText)}</p>
 
-            <p style="
-              color:#666;
-              font-size:0.8rem;
-              margin-top:8px;
-            ">${escapeHtml(dateText)}</p>
-          </div>
-          <div style="margin-top:18px;">
-            <div style="
-              height:8px;
-              background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5);
-              border-radius:4px;
-            "></div>
-          </div>
+          <p style="
+            color:#666;
+            font-size:0.75rem;
+            margin-top:6px;
+          ">${escapeHtml(dateText)}</p>
+        </div>
+        <div style="margin-top:14px;">
+          <div style="
+            height:6px;
+            background:linear-gradient(90deg, #c41e3a, #003366, #00a8b5);
+            border-radius:3px;
+          "></div>
         </div>
       </div>
     </div>
   `;
 
+  // Wrapper temporal: contiene el certificado en el DOM para que html2canvas lo capture
   const wrapper = document.createElement('div');
-  wrapper.id = 'pdf-cert-wrapper';
-  wrapper.style.cssText = 'position:fixed; left:-10000px; top:-10000px; width:297mm; height:210mm; z-index:-1; overflow:hidden;';
+  wrapper.style.cssText = 'position:absolute; left:-9999px; top:0; z-index:-1; overflow:hidden;';
   wrapper.innerHTML = certHTML;
   document.body.appendChild(wrapper);
 
-  const element = wrapper.firstElementChild;
+  const element = document.getElementById('cert-page');
 
   const opt = {
     margin: 0,
