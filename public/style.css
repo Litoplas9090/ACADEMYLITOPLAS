@@ -1,5 +1,6 @@
 /* ============================================
-   LITOPLAS ACADEMY - STYLE.CSS v5.4
+   LITOPLAS ACADEMY - STYLE.CSS v5.5.10
+   Sin traducciones - Solo Español
    ============================================ */
 
 :root {
@@ -1062,12 +1063,10 @@ body {
   .question-config { flex-direction: column; align-items: flex-start; }
 }
 
-
 /* ============================================
-   ESTILOS NUEVOS v5.5 - VIDEO FALLBACK Y VALIDACIÓN
+   ESTILOS v5.5 - VIDEO FALLBACK Y VALIDACIÓN
    ============================================ */
 
-/* VIDEO FALLBACK */
 .video-wrapper {
   margin-bottom: 20px;
 }
@@ -1090,7 +1089,6 @@ body {
   display: none !important;
 }
 
-/* VALIDACIÓN DE URL EN ADMIN */
 .video-status {
   font-size: 0.85rem;
   font-weight: 600;
@@ -1106,7 +1104,6 @@ body {
   color: var(--color-danger);
 }
 
-/* Mejorar contenedor de video */
 .video-container {
   position: relative;
   padding-bottom: 56.25%;
@@ -1129,7 +1126,6 @@ body {
 .video-container.loaded {
   opacity: 1;
 }
-
 
 /* ============================================
    ADMIN PANEL UNIFICADO v5.5.3
@@ -1168,7 +1164,6 @@ body {
   margin: 0;
 }
 
-/* Alternar colores de borde para cada sección */
 .admin-section:nth-child(2) { border-left-color: var(--color-accent); }
 .admin-section:nth-child(3) { border-left-color: var(--color-warning); }
 .admin-section:nth-child(4) { border-left-color: var(--color-success); }
@@ -1178,53 +1173,11 @@ body {
 .admin-section:nth-child(3) .admin-section-header h3 { color: #b8860b; }
 .admin-section:nth-child(4) .admin-section-header h3 { color: var(--color-success); }
 
-/* Responsive admin unificado */
 @media (max-width: 768px) {
   .admin-section {
     padding: 18px;
   }
   .admin-section-header h3 {
     font-size: 1.05rem;
-  }
-}
-
-
-/* ============================================
-   SELECTOR DE IDIOMA
-   ============================================ */
-
-.lang-selector {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  margin-top: 15px;
-}
-
-.lang-btn {
-  padding: 6px 14px;
-  border: 2px solid rgba(255,255,255,0.5);
-  background: rgba(255,255,255,0.15);
-  color: white;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.lang-btn:hover {
-  background: rgba(255,255,255,0.3);
-}
-
-.lang-btn.active {
-  background: white;
-  color: var(--color-secondary);
-  border-color: white;
-}
-
-@media (max-width: 768px) {
-  .lang-btn {
-    padding: 5px 12px;
-    font-size: 0.8rem;
   }
 }
