@@ -629,7 +629,6 @@ function downloadCertificatePDF() {
   const expiryText = certExpiry ? certExpiry.textContent : '';
   const dateText = certDate ? certDate.textContent : '';
 
-  // Usar display:table para centrado vertical compatible con html2canvas
   const certHTML = `
     <div style="
       width:297mm;
