@@ -1,6 +1,6 @@
 // ============================================
-// LITOPLAS ACADEMY - ADMIN.JS v5.5.4
-// Gestión unificada: buscar + usuarios + próximos a vencer
+// LITOPLAS ACADEMY - ADMIN.JS v5.4
+// Estadísticas, eliminar usuarios, módulos dinámicos, preguntas avanzadas
 // ============================================
 
 const API_URL = window.location.origin;
@@ -14,19 +14,24 @@ const adminMsg = document.getElementById('admin-msg');
 const btnAdminLogin = document.getElementById('btn-admin-login');
 const btnAdminLogout = document.getElementById('btn-admin-logout');
 
-const tabGestion = document.getElementById('tab-gestion');
-const tabContent = document.getElementById('tab-content');
+const tabSearch = document.getElementById('tab-search');
+const tabUsers = document.getElementById('tab-users');
+const tabExpiring = document.getElementById('tab-expiring');
 const tabStats = document.getElementById('tab-stats');
+const tabContent = document.getElementById('tab-content');
 
-const panelGestion = document.getElementById('panel-gestion');
-const panelContent = document.getElementById('panel-content');
+const panelSearch = document.getElementById('panel-search');
+const panelUsers = document.getElementById('panel-users');
+const panelExpiring = document.getElementById('panel-expiring');
 const panelStats = document.getElementById('panel-stats');
+const panelContent = document.getElementById('panel-content');
 
-const searchUserInput = document.getElementById('search-user');
-const filterStatus = document.getElementById('filter-status');
+const searchDocument = document.getElementById('search-document');
 const btnSearch = document.getElementById('btn-search');
-const btnClearFilters = document.getElementById('btn-clear-filters');
+const searchResults = document.getElementById('search-results');
+
 const usersTableContainer = document.getElementById('users-table-container');
+const expiringTableContainer = document.getElementById('expiring-table-container');
 const statsContainer = document.getElementById('stats-container');
 const modulesAdminContainer = document.getElementById('modules-admin-container');
 const btnSaveModules = document.getElementById('btn-save-modules');
@@ -39,23 +44,22 @@ const btnDownloadCertAdmin = document.getElementById('btn-download-cert-admin');
 let currentCertUser = null;
 let adminModulesData = [];
 let adminQuestionsData = {};
-let allUsers = [];
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('[ADMIN] Iniciando panel administrativo v5.5.4');
+  console.log('[ADMIN] Iniciando panel administrativo v5.4');
 
   btnAdminLogin.addEventListener('click', doAdminLogin);
   btnAdminLogout.addEventListener('click', doAdminLogout);
   adminPass.addEventListener('keypress', function(e) { if (e.key === 'Enter') doAdminLogin(); });
 
-  tabGestion.addEventListener('click', function() { showTab('gestion'); });
-  tabContent.addEventListener('click', function() { showTab('content'); });
+  tabSearch.addEventListener('click', function() { showTab('search'); });
+  tabUsers.addEventListener('click', function() { showTab('users'); });
+  tabExpiring.addEventListener('click', function() { showTab('expiring'); });
   tabStats.addEventListener('click', function() { showTab('stats'); });
+  tabContent.addEventListener('click', function() { showTab('content'); });
 
-  btnSearch.addEventListener('click', filterUsers);
-  btnClearFilters.addEventListener('click', clearFilters);
-  searchUserInput.addEventListener('input', debounce(filterUsers, 300));
-  filterStatus.addEventListener('change', filterUsers);
+  btnSearch.addEventListener('click', searchUser);
+  searchDocument.addEventListener('keypress', function(e) { if (e.key === 'Enter') searchUser(); });
 
   btnSaveModules.addEventListener('click', saveModules);
 
@@ -67,14 +71,6 @@ document.addEventListener('DOMContentLoaded', function() {
     loadUsers();
   }
 });
-
-function debounce(fn, ms) {
-  let timer;
-  return function(...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), ms);
-  };
-}
 
 async function doAdminLogin() {
   const username = adminUser.value.trim();
@@ -129,17 +125,35 @@ function showAdminPanel() {
 }
 
 function showTab(tab) {
-  [tabGestion, tabContent, tabStats].forEach(t => t.classList.remove('active'));
-  [panelGestion, panelContent, panelStats].forEach(p => p.classList.add('hidden'));
+  [tabSearch, tabUsers, tabExpiring, tabStats, tabContent].forEach(t => t.classList.remove('active'));
+  [panelSearch, panelUsers, panelExpiring, panelStats, panelContent].forEach(p => p.classList.add('hidden'));
 
-  if (tab === 'gestion') { tabGestion.classList.add('active'); panelGestion.classList.remove('hidden'); loadUsers(); }
-  if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
+  if (tab === 'search') { tabSearch.classList.add('active'); panelSearch.classList.remove('hidden'); }
+  if (tab === 'users') { tabUsers.classList.add('active'); panelUsers.classList.remove('hidden'); loadUsers(); }
+  if (tab === 'expiring') { tabExpiring.classList.add('active'); panelExpiring.classList.remove('hidden'); loadExpiring(); }
   if (tab === 'stats') { tabStats.classList.add('active'); panelStats.classList.remove('hidden'); loadStats(); }
+  if (tab === 'content') { tabContent.classList.add('active'); panelContent.classList.remove('hidden'); loadModulesAdmin(); }
 }
 
-// ============================================
-// GESTIÓN DE USUARIOS UNIFICADA
-// ============================================
+async function searchUser() {
+  const doc = searchDocument.value.trim();
+  if (!doc) { searchResults.innerHTML = '<p class="msg">Ingresa un número de documento</p>'; return; }
+  searchResults.innerHTML = '<p>Buscando...</p>';
+
+  try {
+    const res = await fetch(API_URL + '/api/admin/users/search?document=' + encodeURIComponent(doc), {
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    const users = await res.json();
+    if (!users || users.length === 0) {
+      searchResults.innerHTML = '<p class="msg">No se encontró ningún usuario con ese documento</p>';
+      return;
+    }
+    renderUserCards(users, searchResults);
+  } catch (err) {
+    searchResults.innerHTML = '<p class="msg error">Error de conexión</p>';
+  }
+}
 
 async function loadUsers() {
   usersTableContainer.innerHTML = '<p>Cargando usuarios...</p>';
@@ -147,63 +161,133 @@ async function loadUsers() {
     const res = await fetch(API_URL + '/api/admin/users', {
       headers: { 'Authorization': 'Bearer ' + adminToken }
     });
-    allUsers = await res.json();
-    filterUsers();
+    const users = await res.json();
+    renderUserTable(users, usersTableContainer);
   } catch (err) {
     usersTableContainer.innerHTML = '<p class="msg error">Error cargando usuarios</p>';
   }
 }
 
-function filterUsers() {
-  const q = (searchUserInput.value || '').toLowerCase().trim();
-  const status = filterStatus.value;
-  const now = new Date();
-  const nextMonth = new Date();
-  nextMonth.setDate(nextMonth.getDate() + 30);
+async function loadExpiring() {
+  expiringTableContainer.innerHTML = '<p>Cargando...</p>';
+  try {
+    const res = await fetch(API_URL + '/api/admin/users', {
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    const users = await res.json();
+    const now = new Date();
+    const thirtyDays = new Date();
+    thirtyDays.setDate(thirtyDays.getDate() + 30);
 
-  let filtered = allUsers.filter(u => {
-    const matchQ = !q || (u.document && u.document.toLowerCase().includes(q)) || (u.full_name && u.full_name.toLowerCase().includes(q));
-    let matchStatus = true;
-    if (status === 'certified') matchStatus = !!u.certificate_issued;
-    if (status === 'nocert') matchStatus = !u.certificate_issued;
-    if (status === 'expiring') {
-      const expiry = u.certificate_expiry ? new Date(u.certificate_expiry) : null;
-      matchStatus = expiry && expiry >= now && expiry <= nextMonth;
+    const expiring = users.filter(u => {
+      if (!u.certificate_expiry) return false;
+      const exp = new Date(u.certificate_expiry);
+      return exp <= thirtyDays && exp >= now;
+    });
+
+    if (expiring.length === 0) {
+      expiringTableContainer.innerHTML = '<p class="msg success">No hay certificados próximos a vencer en los próximos 30 días</p>';
+      return;
     }
-    return matchQ && matchStatus;
-  });
-
-  renderUserTable(filtered);
-  updateStats(filtered);
+    renderUserTable(expiring, expiringTableContainer, true);
+  } catch (err) {
+    expiringTableContainer.innerHTML = '<p class="msg error">Error cargando datos</p>';
+  }
 }
 
-function clearFilters() {
-  searchUserInput.value = '';
-  filterStatus.value = 'all';
-  filterUsers();
+async function loadStats() {
+  statsContainer.innerHTML = '<p>Cargando estadísticas...</p>';
+  try {
+    const res = await fetch(API_URL + '/api/admin/stats', {
+      headers: { 'Authorization': 'Bearer ' + adminToken }
+    });
+    const stats = await res.json();
+
+    let html = '<div class="stats-grid">';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.total_users || 0) + '</div><div class="stat-label">Total Usuarios</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.certified_users || 0) + '</div><div class="stat-label">Certificados</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.avg_progress || 0) + '%</div><div class="stat-label">Progreso Promedio</div></div>';
+    html += '<div class="stat-card"><div class="stat-number">' + (stats.expiring_soon || 0) + '</div><div class="stat-label">Próximos a Vencer</div></div>';
+    html += '</div>';
+
+    // Filtros
+    html += '<div class="stats-filters">';
+    html += '<h4>Filtrar por período</h4>';
+    html += '<div class="filter-row">';
+    html += '<select id="filter-year"><option value="">Todos los años</option>' + generateYearOptions() + '</select>';
+    html += '<select id="filter-month"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>';
+    html += '<button id="btn-filter-stats" class="btn-primary" style="width:auto;padding:10px 20px;">Filtrar</button>';
+    html += '</div></div>';
+
+    // Tabla mensual
+    if (stats.monthly && stats.monthly.length > 0) {
+      html += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
+      html += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
+      stats.monthly.forEach(m => {
+        const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        html += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
+      });
+      html += '</tbody></table>';
+    } else {
+      html += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
+    }
+
+    statsContainer.innerHTML = html;
+
+    document.getElementById('btn-filter-stats').addEventListener('click', async function() {
+      const year = document.getElementById('filter-year').value;
+      const month = document.getElementById('filter-month').value;
+      let url = API_URL + '/api/admin/stats';
+      const params = [];
+      if (year) params.push('year=' + year);
+      if (month) params.push('month=' + month);
+      if (params.length > 0) url += '?' + params.join('&');
+
+      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + adminToken } });
+      const filtered = await res.json();
+
+      let tableHtml = '';
+      if (filtered.monthly && filtered.monthly.length > 0) {
+        tableHtml += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
+        tableHtml += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
+        filtered.monthly.forEach(m => {
+          const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+          tableHtml += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
+        });
+        tableHtml += '</tbody></table>';
+      } else {
+        tableHtml += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
+      }
+
+      const oldTable = statsContainer.querySelector('table');
+      const oldMsg = statsContainer.querySelector('.msg');
+      if (oldTable) oldTable.remove();
+      if (oldMsg) oldMsg.remove();
+
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = tableHtml;
+      while (tempDiv.firstChild) {
+        statsContainer.appendChild(tempDiv.firstChild);
+      }
+    });
+
+  } catch (err) {
+    statsContainer.innerHTML = '<p class="msg error">Error cargando estadísticas</p>';
+  }
 }
 
-function updateStats(users) {
-  const total = users.length;
-  const certified = users.filter(u => u.certificate_issued).length;
-  const avgProgress = total > 0 ? Math.round(users.reduce((a, b) => a + (b.progress || 0), 0) / total) : 0;
-  const now = new Date();
-  const nextMonth = new Date();
-  nextMonth.setDate(nextMonth.getDate() + 30);
-  const expiring = users.filter(u => {
-    const expiry = u.certificate_expiry ? new Date(u.certificate_expiry) : null;
-    return expiry && expiry >= now && expiry <= nextMonth;
-  }).length;
-
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-certified').textContent = certified;
-  document.getElementById('stat-progress').textContent = avgProgress + '%';
-  document.getElementById('stat-expiring').textContent = expiring;
+function generateYearOptions() {
+  const currentYear = new Date().getFullYear();
+  let html = '';
+  for (let y = currentYear; y >= currentYear - 5; y--) {
+    html += '<option value="' + y + '">' + y + '</option>';
+  }
+  return html;
 }
 
-function renderUserTable(users) {
+function renderUserTable(users, container, showExpiryOnly) {
   if (!users || users.length === 0) {
-    usersTableContainer.innerHTML = '<p class="msg">No hay usuarios para mostrar</p>';
+    container.innerHTML = '<p class="msg">No hay usuarios registrados</p>';
     return;
   }
   let html = '<table class="data-table"><thead><tr>';
@@ -215,14 +299,13 @@ function renderUserTable(users) {
       ? '<span class="badge-success">✓ Emitido</span>' 
       : '<span class="badge-pending">Pendiente</span>';
     const expiryText = u.certificate_expiry ? new Date(u.certificate_expiry).toLocaleDateString('es-CO') : '-';
-    const isExpiring = u.certificate_expiry && new Date(u.certificate_expiry) <= new Date(Date.now() + 30*24*60*60*1000) && new Date(u.certificate_expiry) > new Date();
 
     html += '<tr>';
     html += '<td>' + escapeHtml(u.full_name) + '</td>';
-    html += '<td><strong>' + escapeHtml(u.document) + '</strong></td>';
+    html += '<td>' + escapeHtml(u.document) + '</td>';
     html += '<td>' + escapeHtml(u.company || '-') + '</td>';
     html += '<td>' + (u.progress || 0) + '% (' + (u.completed_modules || 0) + '/' + (u.total_modules || 6) + ')</td>';
-    html += '<td>' + certStatus + '<br><small>' + (isExpiring ? '<span style="color:#dc3545;font-weight:700;">⚠ ' + expiryText + '</span>' : expiryText) + '</small></td>';
+    html += '<td>' + certStatus + '<br><small>' + expiryText + '</small></td>';
     html += '<td>';
     if (u.certificate_issued) {
       html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Certificado</button> ';
@@ -232,18 +315,45 @@ function renderUserTable(users) {
     html += '</td></tr>';
   });
   html += '</tbody></table>';
-  usersTableContainer.innerHTML = html;
+  container.innerHTML = html;
 
-  usersTableContainer.querySelectorAll('.btn-cert').forEach(btn => {
+  container.querySelectorAll('.btn-cert').forEach(btn => {
     btn.addEventListener('click', function() {
       openCertificateModal(this.getAttribute('data-user-id'), this.getAttribute('data-user-name'), this.getAttribute('data-user-doc'), this.getAttribute('data-expiry'));
     });
   });
-  usersTableContainer.querySelectorAll('.btn-reset').forEach(btn => {
+  container.querySelectorAll('.btn-reset').forEach(btn => {
     btn.addEventListener('click', function() { resetPassword(this.getAttribute('data-user-id')); });
   });
-  usersTableContainer.querySelectorAll('.btn-delete-user').forEach(btn => {
+  container.querySelectorAll('.btn-delete-user').forEach(btn => {
     btn.addEventListener('click', function() { deleteUser(this.getAttribute('data-user-id'), this.getAttribute('data-user-name')); });
+  });
+}
+
+function renderUserCards(users, container) {
+  if (!users || users.length === 0) return;
+  let html = '<div class="user-cards">';
+  users.forEach(u => {
+    const certStatus = u.certificate_issued 
+      ? '<span class="badge-success">Certificado Emitido</span>' 
+      : '<span class="badge-pending">Sin Certificado</span>';
+    html += '<div class="user-card">';
+    html += '<h4>' + escapeHtml(u.full_name) + '</h4>';
+    html += '<p><strong>Documento:</strong> ' + escapeHtml(u.document) + '</p>';
+    html += '<p><strong>Empresa:</strong> ' + escapeHtml(u.company || '-') + '</p>';
+    html += '<p><strong>Progreso:</strong> ' + (u.progress || 0) + '%</p>';
+    html += '<p>' + certStatus + '</p>';
+    if (u.certificate_issued) {
+      html += '<button class="btn-small btn-cert" data-user-id="' + u.id + '" data-user-name="' + escapeHtml(u.full_name) + '" data-user-doc="' + escapeHtml(u.document) + '" data-expiry="' + (u.certificate_expiry || '') + '">📄 Ver Certificado</button>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  container.querySelectorAll('.btn-cert').forEach(btn => {
+    btn.addEventListener('click', function() {
+      openCertificateModal(this.getAttribute('data-user-id'), this.getAttribute('data-user-name'), this.getAttribute('data-user-doc'), this.getAttribute('data-expiry'));
+    });
   });
 }
 
@@ -337,98 +447,6 @@ async function deleteUser(userId, userName) {
 }
 
 // ============================================
-// ESTADÍSTICAS
-// ============================================
-
-async function loadStats() {
-  statsContainer.innerHTML = '<p>Cargando estadísticas...</p>';
-  try {
-    const res = await fetch(API_URL + '/api/admin/stats', {
-      headers: { 'Authorization': 'Bearer ' + adminToken }
-    });
-    const stats = await res.json();
-
-    let html = '<div class="stats-grid">';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.total_users || 0) + '</div><div class="stat-label">Total Usuarios</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.certified_users || 0) + '</div><div class="stat-label">Certificados</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.avg_progress || 0) + '%</div><div class="stat-label">Progreso Promedio</div></div>';
-    html += '<div class="stat-card"><div class="stat-number">' + (stats.expiring_soon || 0) + '</div><div class="stat-label">Próximos a Vencer</div></div>';
-    html += '</div>';
-
-    html += '<div class="stats-filters">';
-    html += '<h4>Filtrar por período</h4>';
-    html += '<div class="filter-row">';
-    html += '<select id="filter-year"><option value="">Todos los años</option>' + generateYearOptions() + '</select>';
-    html += '<select id="filter-month"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select>';
-    html += '<button id="btn-filter-stats" class="btn-primary" style="width:auto;padding:10px 20px;">Filtrar</button>';
-    html += '</div></div>';
-
-    if (stats.monthly && stats.monthly.length > 0) {
-      html += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
-      html += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
-      stats.monthly.forEach(m => {
-        const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-        html += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    } else {
-      html += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
-    }
-
-    statsContainer.innerHTML = html;
-
-    document.getElementById('btn-filter-stats').addEventListener('click', async function() {
-      const year = document.getElementById('filter-year').value;
-      const month = document.getElementById('filter-month').value;
-      let url = API_URL + '/api/admin/stats';
-      const params = [];
-      if (year) params.push('year=' + year);
-      if (month) params.push('month=' + month);
-      if (params.length > 0) url += '?' + params.join('&');
-
-      const res = await fetch(url, { headers: { 'Authorization': 'Bearer ' + adminToken } });
-      const filtered = await res.json();
-
-      let tableHtml = '';
-      if (filtered.monthly && filtered.monthly.length > 0) {
-        tableHtml += '<h4 style="margin-top:20px;margin-bottom:10px;">Registros por Mes</h4>';
-        tableHtml += '<table class="data-table"><thead><tr><th>Año</th><th>Mes</th><th>Usuarios Registrados</th></tr></thead><tbody>';
-        filtered.monthly.forEach(m => {
-          const monthNames = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-          tableHtml += '<tr><td>' + m.year + '</td><td>' + monthNames[parseInt(m.month)] + '</td><td>' + m.count + '</td></tr>';
-        });
-        tableHtml += '</tbody></table>';
-      } else {
-        tableHtml += '<p class="msg" style="margin-top:15px;">No hay datos para el período seleccionado</p>';
-      }
-
-      const oldTable = statsContainer.querySelector('table');
-      const oldMsg = statsContainer.querySelector('.msg');
-      if (oldTable) oldTable.remove();
-      if (oldMsg) oldMsg.remove();
-
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = tableHtml;
-      while (tempDiv.firstChild) {
-        statsContainer.appendChild(tempDiv.firstChild);
-      }
-    });
-
-  } catch (err) {
-    statsContainer.innerHTML = '<p class="msg error">Error cargando estadísticas</p>';
-  }
-}
-
-function generateYearOptions() {
-  const currentYear = new Date().getFullYear();
-  let html = '';
-  for (let y = currentYear; y >= currentYear - 5; y--) {
-    html += '<option value="' + y + '">' + y + '</option>';
-  }
-  return html;
-}
-
-// ============================================
 // GESTIÓN DE MÓDULOS Y PREGUNTAS
 // ============================================
 
@@ -472,6 +490,7 @@ function renderModulesAdmin() {
     html += '<label>Descripción</label>';
     html += '<textarea class="mod-desc" rows="2">' + escapeHtml(mod.description || '') + '</textarea>';
 
+    // Videos del módulo
     html += '<div class="module-videos-section">';
     html += '<label>Videos de YouTube</label>';
     html += '<div class="videos-list" data-module-index="' + idx + '">';
@@ -493,6 +512,7 @@ function renderModulesAdmin() {
     html += '<label>Activo</label>';
     html += '<select class="mod-active"><option value="1" ' + (mod.active !== false ? 'selected' : '') + '>Sí</option><option value="0" ' + (mod.active === false ? 'selected' : '') + '>No</option></select>';
 
+    // Preguntas
     html += '<div class="questions-section">';
     html += '<h5>📝 Preguntas del Módulo</h5>';
     html += '<div class="questions-list" data-module-id="' + mod.id + '">';
@@ -513,6 +533,7 @@ function renderModulesAdmin() {
   html += '<button id="btn-add-module" class="btn-primary" style="margin-top:20px;">+ Agregar Nuevo Módulo</button>';
   modulesAdminContainer.innerHTML = html;
 
+  // Event listeners
   document.querySelectorAll('.btn-add-video').forEach(btn => {
     btn.addEventListener('click', function() {
       addVideoInput(parseInt(this.getAttribute('data-index')));
@@ -542,8 +563,29 @@ function addVideoInput(moduleIndex) {
   if (!list) return;
   const row = document.createElement('div');
   row.className = 'video-input-row';
-  row.innerHTML = '<input type="text" class="mod-video-url" placeholder="https://www.youtube.com/watch?v=..."> <button class="btn-remove-video">🗑️</button>';
+  row.innerHTML = '<input type="text" class="mod-video-url" placeholder="https://www.youtube.com/watch?v=... o https://youtu.be/..."> <button class="btn-remove-video">🗑️</button> <span class="video-status"></span>';
   list.appendChild(row);
+
+  const input = row.querySelector('.mod-video-url');
+  const status = row.querySelector('.video-status');
+
+  // Validación en tiempo real
+  input.addEventListener('blur', function() {
+    const url = this.value.trim();
+    if (!url) { status.textContent = ''; status.className = 'video-status'; return; }
+
+    const isValid = /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/|music\.youtube\.com)[a-zA-Z0-9_-]{11}/.test(url) 
+                 || /youtube-nocookie\.com\/embed\//.test(url);
+
+    if (isValid) {
+      status.textContent = ' ✓ URL válida';
+      status.className = 'video-status valid';
+    } else {
+      status.textContent = ' ✗ URL no reconocida. Usa formato youtube.com/watch?v=ID o youtu.be/ID';
+      status.className = 'video-status invalid';
+    }
+  });
+
   row.querySelector('.btn-remove-video').addEventListener('click', function() {
     row.remove();
   });
@@ -569,6 +611,7 @@ function renderQuestionEditor(moduleId, qidx, q) {
 
   html += '<input type="text" class="q-text-input" placeholder="Texto de la pregunta" value="' + escapeHtml(q.question_text || '') + '">';
 
+  // Video y documento de la pregunta
   html += '<div class="question-media">';
   html += '<label>Video de la pregunta (YouTube URL)</label>';
   html += '<input type="text" class="q-video" placeholder="https://www.youtube.com/watch?v=..." value="' + escapeHtml(q.video_url || '') + '">';
@@ -576,6 +619,7 @@ function renderQuestionEditor(moduleId, qidx, q) {
   html += '<input type="text" class="q-document" placeholder="https://.../doc.pdf" value="' + escapeHtml(q.document_url || '') + '">';
   html += '</div>';
 
+  // Configuración de opciones
   html += '<div class="question-config">';
   html += '<label>Número de opciones</label>';
   html += '<select class="q-num-options">';
@@ -662,6 +706,7 @@ function addNewModule() {
   });
   adminQuestionsData['new_' + Date.now()] = [];
   renderModulesAdmin();
+  // Scroll al nuevo módulo
   setTimeout(() => {
     const items = document.querySelectorAll('.module-admin-item');
     if (items[items.length - 1]) items[items.length - 1].scrollIntoView({ behavior: 'smooth' });

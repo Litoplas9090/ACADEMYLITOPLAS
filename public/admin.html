@@ -34,46 +34,39 @@
       </div>
 
       <div class="admin-tabs">
-        <button id="tab-gestion" class="admin-tab active">Gestión de Usuarios</button>
-        <button id="tab-content" class="admin-tab">Contenido del Curso</button>
+        <button id="tab-search" class="admin-tab active">Buscar por Documento</button>
+        <button id="tab-users" class="admin-tab">Usuarios</button>
+        <button id="tab-expiring" class="admin-tab">Próximos a Vencer</button>
         <button id="tab-stats" class="admin-tab">Estadísticas</button>
+        <button id="tab-content" class="admin-tab">Contenido del Curso</button>
       </div>
 
-      <!-- GESTIÓN DE USUARIOS (unificado: buscar + listar + próximos a vencer) -->
-      <div id="panel-gestion" class="admin-panel-content">
-        <h3>Gestión de Usuarios</h3>
-        <div class="filter-bar">
-          <input type="text" id="search-user" placeholder="Buscar por documento o nombre...">
-          <select id="filter-status">
-            <option value="all">Todos los usuarios</option>
-            <option value="certified">Con certificado</option>
-            <option value="nocert">Sin certificado</option>
-            <option value="expiring">Próximos a vencer (30 días)</option>
-          </select>
+      <!-- BUSCAR POR DOCUMENTO -->
+      <div id="panel-search" class="admin-panel-content">
+        <h3>Buscar Usuario por Documento</h3>
+        <div class="search-row">
+          <input type="text" id="search-document" placeholder="Número de Documento">
           <button id="btn-search" class="btn-primary">Buscar</button>
-          <button id="btn-clear-filters" class="btn-secondary">Limpiar</button>
         </div>
+        <div id="search-results"></div>
+      </div>
 
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-number" id="stat-total">0</div>
-            <div class="stat-label">Total usuarios</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number" id="stat-certified">0</div>
-            <div class="stat-label">Certificados</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-number" id="stat-progress">0%</div>
-            <div class="stat-label">Progreso promedio</div>
-          </div>
-          <div class="stat-card alert">
-            <div class="stat-number" id="stat-expiring">0</div>
-            <div class="stat-label">Próx. a vencer</div>
-          </div>
-        </div>
-
+      <!-- USUARIOS -->
+      <div id="panel-users" class="admin-panel-content hidden">
+        <h3>Listado de Usuarios</h3>
         <div id="users-table-container"></div>
+      </div>
+
+      <!-- PRÓXIMOS A VENCER -->
+      <div id="panel-expiring" class="admin-panel-content hidden">
+        <h3>Certificados Próximos a Vencer</h3>
+        <div id="expiring-table-container"></div>
+      </div>
+
+      <!-- ESTADÍSTICAS -->
+      <div id="panel-stats" class="admin-panel-content hidden">
+        <h3>Estadísticas de la Plataforma</h3>
+        <div id="stats-container"></div>
       </div>
 
       <!-- CONTENIDO DEL CURSO -->
@@ -82,12 +75,6 @@
         <p class="admin-hint">Edita cada módulo, agrega videos, documentos y preguntas. Puedes eliminar módulos o agregar nuevos.</p>
         <div id="modules-admin-container"></div>
         <button id="btn-save-modules" class="btn-primary">Guardar Cambios de Módulos</button>
-      </div>
-
-      <!-- ESTADÍSTICAS -->
-      <div id="panel-stats" class="admin-panel-content hidden">
-        <h3>Estadísticas de la Plataforma</h3>
-        <div id="stats-container"></div>
       </div>
     </div>
   </div>

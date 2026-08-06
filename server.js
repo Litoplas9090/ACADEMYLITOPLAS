@@ -45,14 +45,15 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://*.youtube.com", "https://s.ytimg.com", "https://www.youtube-nocookie.com", "https://youtube.com"],
       scriptSrcAttr: ["'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https://i.ytimg.com", "https://img.youtube.com"],
-      connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://www.youtube.com", "https://www.youtube-nocookie.com"],
-      frameSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
-      childSrc: ["'self'", "https://www.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://youtube-nocookie.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https://i.ytimg.com", "https://img.youtube.com", "https://*.ytimg.com"],
+      connectSrc: ["'self'", "https://cdnjs.cloudflare.com", "https://cdn.jsdelivr.net", "https://*.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com", "https://googlevideo.com"],
+      frameSrc: ["'self'", "https://*.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com"],
+      childSrc: ["'self'", "https://*.youtube.com", "https://www.youtube-nocookie.com", "https://youtube.com"],
+      mediaSrc: ["'self'", "https://*.youtube.com", "https://www.youtube-nocookie.com"],
     },
   },
   crossOriginEmbedderPolicy: false,
@@ -74,25 +75,62 @@ const ADMIN_PASS_HASH = process.env.ADMIN_PASS ? bcrypt.hashSync(process.env.ADM
 // ============================================
 function toYouTubeEmbed(url) {
   if (!url) return '';
-  if (url.includes('youtube-nocookie.com/embed/')) return url;
-  if (url.includes('youtube.com/embed/')) {
-    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
-    if (embedMatch) return 'https://www.youtube-nocookie.com/embed/' + embedMatch[1];
+
+  // Ya está en formato nocookie embed
+  if (url.includes('youtube-nocookie.com/embed/')) {
+    const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0&modestbranding=1';
+    return url;
   }
+
+  // Ya es embed normal (youtube.com/embed/)
+  if (url.includes('youtube.com/embed/')) {
+    const match = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
+    if (match) return 'https://www.youtube-nocookie.com/embed/' + match[1] + '?rel=0&modestbranding=1';
+  }
+
   let videoId = '';
+
+  // Formato: https://www.youtube.com/watch?v=VIDEO_ID
   const watchMatch = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
   if (watchMatch) videoId = watchMatch[1];
+
+  // Formato: https://youtu.be/VIDEO_ID
   if (!videoId) {
     const shortMatch = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
     if (shortMatch) videoId = shortMatch[1];
   }
+
+  // Formato: https://youtube.com/shorts/VIDEO_ID
   if (!videoId) {
-    const embedMatch = url.match(/embed\/([a-zA-Z0-9_-]{11})/);
-    if (embedMatch) videoId = embedMatch[1];
+    const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+    if (shortsMatch) videoId = shortsMatch[1];
   }
+
+  // Formato: https://youtube.com/live/VIDEO_ID
+  if (!videoId) {
+    const liveMatch = url.match(/youtube\.com\/live\/([a-zA-Z0-9_-]{11})/);
+    if (liveMatch) videoId = liveMatch[1];
+  }
+
+  // Formato: https://music.youtube.com/watch?v=VIDEO_ID
+  if (!videoId) {
+    const musicMatch = url.match(/music\.youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/);
+    if (musicMatch) videoId = musicMatch[1];
+  }
+
+  // Extraer parámetro de tiempo (t=123 o start=123)
+  let timeParam = '';
+  const timeMatch = url.match(/[?&](?:t|start)=([0-9]+)/);
+  if (timeMatch) {
+    timeParam = '&start=' + timeMatch[1];
+  }
+
   if (videoId) {
-    return 'https://www.youtube-nocookie.com/embed/' + videoId;
+    return 'https://www.youtube-nocookie.com/embed/' + videoId + '?rel=0&modestbranding=1' + timeParam;
   }
+
+  // Fallback: si no se pudo extraer, devolver original (pero probablemente fallará)
   return url;
 }
 
@@ -102,6 +140,7 @@ function toYouTubeEmbed(url) {
 async function initDB() {
   if (dbType === 'postgres') {
     try {
+      // Verificar si el esquema está completo
       const checkUsers = await pool.query(`
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'users' AND column_name = 'full_name'
@@ -114,17 +153,13 @@ async function initDB() {
         SELECT column_name FROM information_schema.columns 
         WHERE table_name = 'questions' AND column_name = 'num_options'
       `);
-      const checkOrderNum = await pool.query(`
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name = 'questions' AND column_name = 'order_num'
-      `);
       const checkModuleVideos = await pool.query(`
         SELECT table_name FROM information_schema.tables 
         WHERE table_name = 'module_videos'
       `);
 
       if (checkUsers.rows.length === 0 || checkQuestions.rows.length === 0 || 
-          checkNumOptions.rows.length === 0 || checkOrderNum.rows.length === 0 || checkModuleVideos.rows.length === 0) {
+          checkNumOptions.rows.length === 0 || checkModuleVideos.rows.length === 0) {
         console.log('⚠️ Esquema incompleto o desactualizado. Recreando TODAS las tablas...');
         await pool.query('DROP TABLE IF EXISTS user_progress CASCADE');
         await pool.query('DROP TABLE IF EXISTS questions CASCADE');
@@ -196,6 +231,7 @@ async function initDB() {
         )
       `);
 
+      // Insertar módulos iniciales si no existen
       const modCount = await pool.query('SELECT COUNT(*) FROM modules');
       if (parseInt(modCount.rows[0].count) === 0) {
         const modules = [
@@ -211,6 +247,7 @@ async function initDB() {
             'INSERT INTO modules (title, description, document_url, image_url, order_num, active) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
             m
           );
+          // Insertar video placeholder
           await pool.query(
             'INSERT INTO module_videos (module_id, video_url, order_num) VALUES ($1,$2,$3)',
             [res.rows[0].id, 'https://www.youtube.com/embed/VIDEO' + m[4], 1]
@@ -223,6 +260,7 @@ async function initDB() {
       console.error('❌ Error init PostgreSQL:', err.message);
     }
   } else {
+    // SQLite
     db.serialize(() => {
       db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -326,31 +364,31 @@ app.post('/api/register', async (req, res) => {
     if (!full_name || !document || !password) {
       return res.status(400).json({ error: 'Nombre, documento y contraseña son obligatorios' });
     }
-    // Validación alfanumérica para documentos extranjeros (3-20 caracteres)
-    if (!/^[a-zA-Z0-9\-]{3,20}$/.test(document)) {
-      return res.status(400).json({ error: 'El documento debe tener entre 3 y 20 caracteres alfanuméricos' });
+    // Validación de documento: solo números, 6-12 dígitos
+    if (!/^\d{6,12}$/.test(document)) {
+      return res.status(400).json({ error: 'El documento debe ser numérico y tener entre 6 y 12 dígitos' });
     }
     const hash = await bcrypt.hash(password, 10);
 
     if (dbType === 'postgres') {
-      const exists = await pool.query('SELECT id FROM users WHERE document = $1', [document.toUpperCase()]);
+      const exists = await pool.query('SELECT id FROM users WHERE document = $1', [document]);
       if (exists.rows.length > 0) return res.status(400).json({ error: 'El documento ya está registrado' });
       const result = await pool.query(
         'INSERT INTO users (full_name, document, email, company, password_hash) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-        [full_name, document.toUpperCase(), email || '', company || '', hash]
+        [full_name, document, email || '', company || '', hash]
       );
-      const token = jwt.sign({ userId: result.rows[0].id, document: document.toUpperCase() }, JWT_SECRET, { expiresIn: '24h' });
-      res.json({ success: true, token, user: { id: result.rows[0].id, full_name, document: document.toUpperCase() } });
+      const token = jwt.sign({ userId: result.rows[0].id, document }, JWT_SECRET, { expiresIn: '24h' });
+      res.json({ success: true, token, user: { id: result.rows[0].id, full_name, document } });
     } else {
-      db.get('SELECT id FROM users WHERE document = ?', [document.toUpperCase()], (err, row) => {
+      db.get('SELECT id FROM users WHERE document = ?', [document], (err, row) => {
         if (row) return res.status(400).json({ error: 'El documento ya está registrado' });
         db.run(
           'INSERT INTO users (full_name, document, email, company, password_hash) VALUES (?,?,?,?,?)',
-          [full_name, document.toUpperCase(), email || '', company || '', hash],
+          [full_name, document, email || '', company || '', hash],
           function(err) {
             if (err) return res.status(500).json({ error: err.message });
-            const token = jwt.sign({ userId: this.lastID, document: document.toUpperCase() }, JWT_SECRET, { expiresIn: '24h' });
-            res.json({ success: true, token, user: { id: this.lastID, full_name, document: document.toUpperCase() } });
+            const token = jwt.sign({ userId: this.lastID, document }, JWT_SECRET, { expiresIn: '24h' });
+            res.json({ success: true, token, user: { id: this.lastID, full_name, document } });
           }
         );
       });
@@ -364,9 +402,8 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
   try {
     const { document, password } = req.body;
-    const docUpper = document ? document.toUpperCase() : '';
     if (dbType === 'postgres') {
-      const result = await pool.query('SELECT * FROM users WHERE document = $1', [docUpper]);
+      const result = await pool.query('SELECT * FROM users WHERE document = $1', [document]);
       if (result.rows.length === 0) return res.status(400).json({ error: 'Usuario no encontrado' });
       const user = result.rows[0];
       const valid = await bcrypt.compare(password, user.password_hash);
@@ -374,7 +411,7 @@ app.post('/api/login', async (req, res) => {
       const token = jwt.sign({ userId: user.id, document: user.document }, JWT_SECRET, { expiresIn: '24h' });
       res.json({ success: true, token, user: { id: user.id, full_name: user.full_name, document: user.document, progress: user.progress, completed_modules: user.completed_modules, total_modules: user.total_modules, certificate_issued: user.certificate_issued, certificate_expiry: user.certificate_expiry } });
     } else {
-      db.get('SELECT * FROM users WHERE document = ?', [docUpper], async (err, user) => {
+      db.get('SELECT * FROM users WHERE document = ?', [document], async (err, user) => {
         if (!user) return res.status(400).json({ error: 'Usuario no encontrado' });
         const valid = await bcrypt.compare(password, user.password_hash);
         if (!valid) return res.status(400).json({ error: 'Contraseña incorrecta' });
@@ -420,6 +457,7 @@ app.get('/api/modules', async (req, res) => {
       });
     }
 
+    // Cargar videos para cada módulo
     for (const mod of modules) {
       if (dbType === 'postgres') {
         const vRes = await pool.query('SELECT * FROM module_videos WHERE module_id = $1 ORDER BY order_num', [mod.id]);
@@ -584,7 +622,7 @@ app.get('/api/modules/:id/questions', async (req, res) => {
 app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
   try {
     const moduleId = req.params.id;
-    const { answers } = req.body;
+    const { answers } = req.body; // { questionId: ['A','B'] } o { questionId: 'A' }
 
     let questions;
     if (dbType === 'postgres') {
@@ -610,11 +648,14 @@ app.post('/api/modules/:id/validate', authMiddleware, async (req, res) => {
       const correctSet = new Set((q.correct_options || 'A').split(',').map(s => s.trim()));
 
       if (q.allow_multiple) {
+        // Respuestas múltiples: el usuario envía un array
         const userSet = new Set(Array.isArray(userAns) ? userAns : [userAns]);
+        // Es correcto si coincide exactamente
         if (userSet.size === correctSet.size && [...userSet].every(x => correctSet.has(x))) {
           correct++;
         }
       } else {
+        // Respuesta única
         if (correctSet.has(userAns)) correct++;
       }
     });
@@ -783,16 +824,18 @@ app.get('/api/admin/stats', authMiddleware, async (req, res) => {
     let stats = {};
 
     if (dbType === 'postgres') {
+      // Totales
       const totalRes = await pool.query('SELECT COUNT(*) as total FROM users');
       const certRes = await pool.query('SELECT COUNT(*) as total FROM users WHERE certificate_issued = TRUE');
       const avgRes = await pool.query('SELECT COALESCE(AVG(progress), 0) as avg FROM users');
-      const expRes = await pool.query("SELECT COUNT(*) as total FROM users WHERE certificate_expiry IS NOT NULL AND certificate_expiry > NOW() AND certificate_expiry <= NOW() + INTERVAL '30 days'");
+      const expRes = await pool.query('SELECT COUNT(*) as total FROM users WHERE certificate_expiry IS NOT NULL AND certificate_expiry > NOW() AND certificate_expiry <= NOW() + INTERVAL \'30 days\'');
 
       stats.total_users = parseInt(totalRes.rows[0].total);
       stats.certified_users = parseInt(certRes.rows[0].total);
       stats.avg_progress = Math.round(parseFloat(avgRes.rows[0].avg));
       stats.expiring_soon = parseInt(expRes.rows[0].total);
 
+      // Por mes y año
       let monthlyQuery = `
         SELECT 
           EXTRACT(YEAR FROM created_at) as year,
@@ -904,6 +947,7 @@ app.post('/api/admin/modules', authMiddleware, async (req, res) => {
         );
         const modId = modRes.rows[0].id;
 
+        // Insertar videos del módulo
         if (m.videos && m.videos.length > 0) {
           for (let v = 0; v < m.videos.length; v++) {
             await pool.query(
@@ -1004,6 +1048,6 @@ app.post('/api/admin/reset-password', authMiddleware, async (req, res) => {
 // ============================================
 initDB().then(() => {
   app.listen(PORT, () => {
-    console.log('🚀 Litoplas Academy v5.5.4 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
+    console.log('🚀 Litoplas Academy v5.5 corriendo en puerto ' + PORT + ' [' + dbType.toUpperCase() + ']');
   });
 });
